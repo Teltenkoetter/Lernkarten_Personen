@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Lernkarten | Personen">
-  <meta name="theme-color" content="#1a1a2e">
+  <meta name="theme-color" content="#0d0d1a">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon.svg">
   <title>Lernkarten | Personen</title>
@@ -16,7 +16,43 @@
 
   <header>
     <h1>Lernkarten | Personen</h1>
+    <button id="btn-info" class="btn-help" title="Hilfe">?</button>
   </header>
+
+  <!-- Info-Modal -->
+  <div id="info-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Bedienung</h2>
+        <button id="btn-info-close" class="btn-modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="anleitung-zeilen">
+          <div class="anleitung-zeile">
+            <span class="anleitung-icon">👆</span>
+            <div class="anleitung-text"><strong>Auf Foto tippen</strong> — Name war bekannt, weiter zur nächsten Karte</div>
+          </div>
+          <div class="anleitung-zeile">
+            <span class="anleitung-icon">🔍</span>
+            <div class="anleitung-text"><strong>„Name zeigen" tippen</strong> — Name war unbekannt, wird eingeblendet</div>
+          </div>
+          <div class="anleitung-zeile">
+            <span class="anleitung-icon">↔️</span>
+            <div class="anleitung-text"><strong>Pfeile</strong> — Karten ohne Wertung vor- und zurückblättern</div>
+          </div>
+          <div class="anleitung-zeile">
+            <span class="anleitung-icon">📊</span>
+            <div class="anleitung-text">Am Ende der Übung: <strong>Trefferquote</strong> und Option zur Wiederholung</div>
+          </div>
+          <div class="anleitung-zeile">
+            <span class="anleitung-icon">💾</span>
+            <div class="anleitung-text">Unter <strong>Sicherung</strong> regelmäßig Backup exportieren</div>
+          </div>
+        </div>
+        <p class="modal-meta">Version 1.1 · Klaus Teltenkötter 2026</p>
+      </div>
+    </div>
+  </div>
 
   <main>
 
@@ -24,20 +60,16 @@
     <section id="view-verwaltung" class="view">
 
       <div class="card">
-        <div class="card-header">
-          <h2>Gruppen</h2>
-        </div>
+        <div class="card-header"><h2>Gruppen</h2></div>
         <div id="gruppen-liste" class="gruppen-liste"></div>
         <div class="input-row">
           <input type="text" id="input-neue-gruppe" placeholder="Neue Gruppe…" maxlength="60">
-          <button id="btn-gruppe-add" class="btn-icon" title="Gruppe hinzufügen">+</button>
+          <button id="btn-gruppe-add" class="btn-icon" title="Hinzufügen">+</button>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-header">
-          <h2>Karte hinzufügen</h2>
-        </div>
+        <div class="card-header"><h2>Karte hinzufügen</h2></div>
         <form id="form-karte">
           <div class="form-group">
             <label for="select-gruppe">Gruppe</label>
@@ -78,11 +110,10 @@
     <!-- ── LERNEN ──────────────────────────────────────── -->
     <section id="view-lernen" class="view hidden">
 
+      <!-- Gruppenauswahl -->
       <div id="lernen-auswahl">
         <div class="card">
-          <div class="card-header">
-            <h2>Gruppen auswählen</h2>
-          </div>
+          <div class="card-header"><h2>Gruppen auswählen</h2></div>
           <div id="gruppen-checkboxen" class="gruppen-checkboxen"></div>
           <div class="selection-actions">
             <button id="btn-alle-waehlen" class="btn-secondary">Alle</button>
@@ -92,27 +123,47 @@
         </div>
       </div>
 
+      <!-- Flashcard -->
       <div id="lernen-flashcard" class="hidden">
         <div class="lern-header">
           <button id="btn-beenden" class="btn-text">✕ Beenden</button>
           <span id="lern-position">1 / 1</span>
           <button id="btn-mischen" class="btn-text">⇄ Mischen</button>
         </div>
-
         <div id="lernkarte" class="lernkarte">
           <div class="lernkarte-foto-wrapper">
-            <img id="lern-foto" src="" alt="Studentenfoto">
+            <img id="lern-foto" src="" alt="Foto">
           </div>
           <div id="lern-name-overlay" class="lern-name-overlay hidden">
             <span id="lern-name-text"></span>
           </div>
-          <div id="lern-tap-hinweis" class="lern-tap-hinweis">Tippen zum Aufdecken</div>
         </div>
-
         <div class="lern-steuerung">
-          <button id="btn-zurueck" class="btn-nav" disabled>&#8592;</button>
+          <button id="btn-zurueck" class="btn-nav">&#8592;</button>
           <button id="btn-aufdecken" class="btn-aufdecken">Name zeigen</button>
           <button id="btn-weiter" class="btn-nav">&#8594;</button>
+        </div>
+      </div>
+
+      <!-- Ende -->
+      <div id="lernen-ende" class="hidden">
+        <div class="ende-card">
+          <h2>Übung beendet!</h2>
+          <p class="ende-subtitle" id="ende-subtitle"></p>
+          <div class="ende-stats">
+            <div class="stat stat-gewusst">
+              <span class="stat-zahl" id="stat-gewusst">0</span>
+              <span class="stat-label">Gewusst ✓</span>
+            </div>
+            <div class="stat stat-nicht">
+              <span class="stat-zahl" id="stat-nicht">0</span>
+              <span class="stat-label">Nachgeschaut ✗</span>
+            </div>
+          </div>
+          <div class="ende-buttons">
+            <button id="btn-neue-uebung" class="btn-primary">Neue Übung starten</button>
+            <button id="btn-ende-auswahl" class="btn-text">Andere Gruppen auswählen</button>
+          </div>
         </div>
       </div>
 
@@ -144,43 +195,37 @@
       </div>
 
       <div class="card info-card">
-        <strong>Hinweis zum Datenspeicher</strong>
-        <p>Ihre Karten werden lokal im Browser gespeichert (IndexedDB). Erstellen Sie regelmäßig Backups, um Datenverlust zu vermeiden — z.&nbsp;B. wenn Sie Safari-Daten löschen.</p>
+        <strong>Datenspeicher</strong>
+        <p style="font-size:0.82rem;color:var(--muted);line-height:1.6;margin-top:0.4rem">Karten werden lokal im Browser gespeichert. Erstellen Sie regelmäßig Backups — z.&nbsp;B. wenn Sie Safari-Daten löschen, gehen die Karten verloren.</p>
       </div>
 
     </section>
 
   </main>
 
-  <!-- Bottom Navigation -->
   <nav class="bottom-nav">
     <button class="nav-item active" data-view="verwaltung">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1"/>
-        <rect x="14" y="3" width="7" height="7" rx="1"/>
-        <rect x="3" y="14" width="7" height="7" rx="1"/>
-        <rect x="14" y="14" width="7" height="7" rx="1"/>
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
       </svg>
       <span>Verwaltung</span>
     </button>
     <button class="nav-item" data-view="lernen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="3" width="20" height="18" rx="2"/>
-        <path d="M8 12h8M12 8v8"/>
+        <rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 12h8M12 8v8"/>
       </svg>
       <span>Lernen</span>
     </button>
     <button class="nav-item" data-view="sicherung">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3v12M8 11l4 4 4-4"/>
-        <path d="M4 18h16"/>
+        <path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 18h16"/>
       </svg>
       <span>Sicherung</span>
     </button>
   </nav>
 
   <div id="toast" class="toast hidden"></div>
-
   <script src="app.js"></script>
 </body>
 </html>
