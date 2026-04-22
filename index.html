@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Lernkarten">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>Studenten-Lernkarten</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h1>Studenten-Lernkarten</h1>
+  </header>
+
+  <main>
+
+    <!-- ── VERWALTUNG ─────────────────────────────────── -->
+    <section id="view-verwaltung" class="view">
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Gruppen</h2>
+        </div>
+        <div id="gruppen-liste" class="gruppen-liste"></div>
+        <div class="input-row">
+          <input type="text" id="input-neue-gruppe" placeholder="Neue Gruppe…" maxlength="60">
+          <button id="btn-gruppe-add" class="btn-icon" title="Gruppe hinzufügen">+</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Karte hinzufügen</h2>
+        </div>
+        <form id="form-karte">
+          <div class="form-group">
+            <label for="select-gruppe">Gruppe</label>
+            <select id="select-gruppe" required>
+              <option value="">Gruppe wählen…</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="input-name">Name</label>
+            <input type="text" id="input-name" placeholder="Vor- und Nachname" required maxlength="100">
+          </div>
+          <div class="form-group">
+            <label>Foto</label>
+            <div class="foto-upload" id="foto-upload">
+              <input type="file" id="input-foto" accept="image/*" required>
+              <div id="upload-placeholder" class="upload-placeholder">
+                <span class="upload-icon">📷</span>
+                <span>Tippen zum Foto auswählen</span>
+              </div>
+              <img id="foto-vorschau" class="foto-vorschau hidden" alt="">
+            </div>
+          </div>
+          <button type="submit" id="btn-karte-speichern" class="btn-primary">Karte speichern</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Alle Karten</h2>
+          <span id="karten-gesamt" class="badge">0</span>
+        </div>
+        <div id="karten-nach-gruppen"></div>
+        <p id="keine-karten-hinweis" class="hinweis">Noch keine Karten vorhanden.</p>
+      </div>
+
+    </section>
+
+    <!-- ── LERNEN ──────────────────────────────────────── -->
+    <section id="view-lernen" class="view hidden">
+
+      <div id="lernen-auswahl">
+        <div class="card">
+          <div class="card-header">
+            <h2>Gruppen auswählen</h2>
+          </div>
+          <div id="gruppen-checkboxen" class="gruppen-checkboxen"></div>
+          <div class="selection-actions">
+            <button id="btn-alle-waehlen" class="btn-secondary">Alle</button>
+            <button id="btn-keine-waehlen" class="btn-secondary">Keine</button>
+          </div>
+          <button id="btn-lernen-start" class="btn-primary btn-large" disabled>Lernen starten</button>
+        </div>
+      </div>
+
+      <div id="lernen-flashcard" class="hidden">
+        <div class="lern-header">
+          <button id="btn-beenden" class="btn-text">✕ Beenden</button>
+          <span id="lern-position">1 / 1</span>
+          <button id="btn-mischen" class="btn-text">⇄ Mischen</button>
+        </div>
+
+        <div id="lernkarte" class="lernkarte">
+          <div class="lernkarte-foto-wrapper">
+            <img id="lern-foto" src="" alt="Studentenfoto">
+          </div>
+          <div id="lern-name-overlay" class="lern-name-overlay hidden">
+            <span id="lern-name-text"></span>
+            <div class="timer-bar"><div id="timer-fill" class="timer-fill"></div></div>
+          </div>
+          <div class="lern-tap-hinweis">Tippen zum Aufdecken</div>
+        </div>
+
+        <div class="lern-steuerung">
+          <button id="btn-zurueck" class="btn-nav" disabled>&#8592;</button>
+          <button id="btn-aufdecken" class="btn-aufdecken">Name zeigen</button>
+          <button id="btn-weiter" class="btn-nav">&#8594;</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── SICHERUNG ───────────────────────────────────── -->
+    <section id="view-sicherung" class="view hidden">
+
+      <div class="card">
+        <div class="sicherung-zeile">
+          <div class="sicherung-info">
+            <strong>Exportieren</strong>
+            <p>Alle Karten als Backup-Datei speichern</p>
+          </div>
+          <button id="btn-export" class="btn-primary btn-inline">Exportieren</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sicherung-zeile">
+          <div class="sicherung-info">
+            <strong>Importieren</strong>
+            <p>Karten aus einer Backup-Datei wiederherstellen</p>
+          </div>
+          <button id="btn-import-trigger" class="btn-secondary btn-inline">Importieren</button>
+          <input type="file" id="input-import" accept=".json" class="hidden">
+        </div>
+        <p class="warnung">⚠️ Alle vorhandenen Karten werden dabei ersetzt.</p>
+      </div>
+
+      <div class="card info-card">
+        <strong>Hinweis zum Datenspeicher</strong>
+        <p>Ihre Karten werden lokal im Browser gespeichert (IndexedDB). Erstellen Sie regelmäßig Backups, um Datenverlust zu vermeiden — z.&nbsp;B. wenn Sie Safari-Daten löschen.</p>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-view="verwaltung">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      <span>Verwaltung</span>
+    </button>
+    <button class="nav-item" data-view="lernen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="18" rx="2"/>
+        <path d="M8 12h8M12 8v8"/>
+      </svg>
+      <span>Lernen</span>
+    </button>
+    <button class="nav-item" data-view="sicherung">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3v12M8 11l4 4 4-4"/>
+        <path d="M4 18h16"/>
+      </svg>
+      <span>Sicherung</span>
+    </button>
+  </nav>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
