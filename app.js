@@ -63,20 +63,21 @@ let gruppen   = [];
 let studenten = [];
 
 const urlCache = new Map();
-
 function getFotoUrl(s) {
   if (!urlCache.has(s.id)) urlCache.set(s.id, URL.createObjectURL(s.foto));
   return urlCache.get(s.id);
 }
-
 function revokeUrl(id) {
   if (urlCache.has(id)) { URL.revokeObjectURL(urlCache.get(id)); urlCache.delete(id); }
 }
 
 // learning
-let lernKarten  = [];
-let lernIndex   = 0;
-let nameVisible = false;
+let lernKarten   = [];
+let lernIndex    = 0;
+let nameVisible  = false;
+let gewusst      = 0;
+let nichtGewusst = 0;
+const answeredIds = new Set();
 
 // ============================================================
 // PHOTO COMPRESSION
@@ -121,23 +122,21 @@ function gruppeKartenAnzahl(gid) {
 
 function renderVerwaltung() {
   const gList = document.getElementById('gruppen-liste');
-  if (gruppen.length === 0) {
-    gList.innerHTML = '<p class="hinweis" style="padding:0.5rem 0">Noch keine Gruppen.</p>';
-  } else {
-    gList.innerHTML = gruppen.map(g => `
+  gList.innerHTML = gruppen.length === 0
+    ? '<p class="hinweis" style="padding:0.5rem 0">Noch keine Gruppen.</p>'
+    : gruppen.map(g => `
       <div class="gruppe-item">
         <span class="gruppe-dot"></span>
         <span class="gruppe-name">${esc(g.name)}</span>
         <span class="gruppe-count">${gruppeKartenAnzahl(g.id)} Karte(n)</span>
         <button class="btn-gruppe-ren" data-id="${g.id}" title="Umbenennen">✏️</button>
-        <button class="btn-gruppe-del" data-id="${g.id}" title="Gruppe löschen">✕</button>
+        <button class="btn-gruppe-del" data-id="${g.id}" title="Löschen">✕</button>
       </div>`).join('');
-  }
 
-  const sel = document.getElementById('select-gruppe');
-  const prev = sel.value;
+  const sel     = document.getElementById('select-gruppe');
+  const savedId = localStorage.getItem('lastGruppeId') || sel.value;
   sel.innerHTML = '<option value="">Gruppe wählen…</option>' +
-    gruppen.map(g => `<option value="${g.id}"${g.id === prev ? ' selected' : ''}>${esc(g.name)}</option>`).join('');
+    gruppen.map(g => `<option value="${g.id}"${g.id === savedId ? ' selected' : ''}>${esc(g.name)}</option>`).join('');
 
   const container = document.getElementById('karten-nach-gruppen');
   const hinweis   = document.getElementById('keine-karten-hinweis');
@@ -164,27 +163,23 @@ function renderVerwaltung() {
     if (!arr.length) return;
     html += `<div class="gruppe-karten-section">
       <div class="gruppe-karten-title">${esc(g.name)}</div>
-      <div class="karten-liste">
-        ${arr.map(s => `
-          <div class="karte-item">
-            <img src="${getFotoUrl(s)}" alt="${esc(s.name)}" loading="lazy">
-            <span class="karte-name">${esc(s.name)}</span>
-            <button class="btn-karte-del" data-id="${s.id}" title="Karte löschen">✕</button>
-          </div>`).join('')}
-      </div>
+      ${arr.map(s => `
+        <div class="karte-item">
+          <img src="${getFotoUrl(s)}" alt="${esc(s.name)}" loading="lazy">
+          <span class="karte-name">${esc(s.name)}</span>
+          <button class="btn-karte-del" data-id="${s.id}" title="Löschen">✕</button>
+        </div>`).join('')}
     </div>`;
   });
   if (ohneGruppe.length) {
     html += `<div class="gruppe-karten-section">
       <div class="gruppe-karten-title">Ohne Gruppe</div>
-      <div class="karten-liste">
-        ${ohneGruppe.map(s => `
-          <div class="karte-item">
-            <img src="${getFotoUrl(s)}" alt="${esc(s.name)}" loading="lazy">
-            <span class="karte-name">${esc(s.name)}</span>
-            <button class="btn-karte-del" data-id="${s.id}" title="Karte löschen">✕</button>
-          </div>`).join('')}
-      </div>
+      ${ohneGruppe.map(s => `
+        <div class="karte-item">
+          <img src="${getFotoUrl(s)}" alt="${esc(s.name)}" loading="lazy">
+          <span class="karte-name">${esc(s.name)}</span>
+          <button class="btn-karte-del" data-id="${s.id}" title="Löschen">✕</button>
+        </div>`).join('')}
     </div>`;
   }
   container.innerHTML = html;
@@ -196,13 +191,11 @@ function renderVerwaltung() {
 
 function renderLernAuswahl() {
   const container = document.getElementById('gruppen-checkboxen');
-
   if (gruppen.length === 0) {
     container.innerHTML = '<p class="hinweis">Bitte zuerst Gruppen und Karten anlegen.</p>';
     document.getElementById('btn-lernen-start').disabled = true;
     return;
   }
-
   container.innerHTML = gruppen.map(g => {
     const n = gruppeKartenAnzahl(g.id);
     return `
@@ -214,50 +207,77 @@ function renderLernAuswahl() {
         </div>
       </div>`;
   }).join('');
-
   updateLernStartBtn();
 }
 
 function getSelectedGids() {
-  return [...document.querySelectorAll('.gruppe-check-item.selected')]
-    .map(el => el.dataset.gid);
+  return [...document.querySelectorAll('.gruppe-check-item.selected')].map(el => el.dataset.gid);
 }
 
 function updateLernStartBtn() {
-  const gids = getSelectedGids();
-  const total = gids.reduce((sum, gid) => sum + gruppeKartenAnzahl(gid), 0);
+  const total = getSelectedGids().reduce((s, gid) => s + gruppeKartenAnzahl(gid), 0);
   const btn = document.getElementById('btn-lernen-start');
   btn.disabled = total === 0;
-  btn.textContent = total > 0
-    ? `Lernen starten (${total} Karte${total !== 1 ? 'n' : ''})`
-    : 'Lernen starten';
+  btn.textContent = total > 0 ? `Lernen starten (${total} Karte${total !== 1 ? 'n' : ''})` : 'Lernen starten';
 }
 
 // ============================================================
-// RENDER – FLASHCARD
+// FLASHCARD LOGIC
 // ============================================================
 
 function zeigeKarte() {
   nameVisible = false;
   document.getElementById('lern-name-overlay').classList.add('hidden');
   document.getElementById('btn-aufdecken').textContent = 'Name zeigen';
-  document.getElementById('lern-tap-hinweis').textContent = 'Tippen zum Aufdecken';
 
   const s = lernKarten[lernIndex];
-  document.getElementById('lern-foto').src     = getFotoUrl(s);
+  document.getElementById('lern-foto').src = getFotoUrl(s);
   document.getElementById('lern-name-text').textContent = s.name;
-  document.getElementById('lern-position').textContent  =
-    `${lernIndex + 1} / ${lernKarten.length}`;
-  document.getElementById('btn-zurueck').disabled = lernIndex === 0;
-  document.getElementById('btn-weiter').disabled  = lernIndex === lernKarten.length - 1;
+  document.getElementById('lern-position').textContent  = `${lernIndex + 1} / ${lernKarten.length}`;
+
+  document.getElementById('btn-zurueck').classList.toggle('invisible', lernIndex === 0);
+  document.getElementById('btn-weiter').classList.toggle('invisible', lernIndex === lernKarten.length - 1);
 }
 
 function zeigeName() {
+  const s = lernKarten[lernIndex];
+  if (!answeredIds.has(s.id)) {
+    nichtGewusst++;
+    answeredIds.add(s.id);
+  }
   nameVisible = true;
   document.getElementById('lern-name-overlay').classList.remove('hidden');
-  document.getElementById('btn-aufdecken').textContent =
-    lernIndex < lernKarten.length - 1 ? 'Weiter →' : 'Ende';
-  document.getElementById('lern-tap-hinweis').textContent = 'Tippen für nächste Karte';
+  const istLetzte = lernIndex === lernKarten.length - 1;
+  document.getElementById('btn-aufdecken').textContent = istLetzte ? 'Fertig ✓' : 'Weiter →';
+}
+
+function naechsteKarteOderEnde() {
+  if (lernIndex < lernKarten.length - 1) {
+    lernIndex++;
+    zeigeKarte();
+  } else {
+    zeigeEnde();
+  }
+}
+
+function zeigeEnde() {
+  document.getElementById('lernen-flashcard').classList.add('hidden');
+  document.getElementById('lernen-ende').classList.remove('hidden');
+  const total = lernKarten.length;
+  document.getElementById('stat-gewusst').textContent = gewusst;
+  document.getElementById('stat-nicht').textContent   = nichtGewusst;
+  document.getElementById('ende-subtitle').textContent = `${total} Karte${total !== 1 ? 'n' : ''} abgefragt`;
+}
+
+function starteSession(karten) {
+  lernKarten   = mischen([...karten]);
+  lernIndex    = 0;
+  gewusst      = 0;
+  nichtGewusst = 0;
+  answeredIds.clear();
+  document.getElementById('lernen-ende').classList.add('hidden');
+  document.getElementById('lernen-flashcard').classList.remove('hidden');
+  zeigeKarte();
 }
 
 // ============================================================
@@ -265,15 +285,14 @@ function zeigeName() {
 // ============================================================
 
 function showView(name) {
-  ['verwaltung', 'lernen', 'sicherung'].forEach(v => {
-    document.getElementById(`view-${v}`).classList.toggle('hidden', v !== name);
-  });
+  ['verwaltung', 'lernen', 'sicherung'].forEach(v =>
+    document.getElementById(`view-${v}`).classList.toggle('hidden', v !== name));
   document.querySelectorAll('.nav-item').forEach(b =>
     b.classList.toggle('active', b.dataset.view === name));
-
   if (name === 'lernen') {
     document.getElementById('lernen-auswahl').classList.remove('hidden');
     document.getElementById('lernen-flashcard').classList.add('hidden');
+    document.getElementById('lernen-ende').classList.add('hidden');
     renderLernAuswahl();
   }
 }
@@ -319,18 +338,13 @@ async function importDaten(file) {
   try {
     const data = JSON.parse(await file.text());
     if (!data.gruppen || !data.studenten) throw new Error('Ungültiges Format');
-
     studenten.forEach(s => revokeUrl(s.id));
-
     await dbClear('gruppen');
     await dbClear('studenten');
-
     for (const g of data.gruppen) await dbPut('gruppen', g);
     for (const s of data.studenten) {
-      const blob = dataUrlToBlob(s.foto);
-      await dbPut('studenten', { ...s, foto: blob });
+      await dbPut('studenten', { ...s, foto: dataUrlToBlob(s.foto) });
     }
-
     await ladeAlles();
     renderVerwaltung();
     toast(`Import erfolgreich – ${studenten.length} Karten geladen`);
@@ -344,9 +358,7 @@ async function importDaten(file) {
 // ============================================================
 
 function esc(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 let toastTimer;
@@ -373,6 +385,15 @@ function mischen(arr) {
 document.querySelectorAll('.nav-item').forEach(btn =>
   btn.addEventListener('click', () => showView(btn.dataset.view)));
 
+// Info-Modal
+document.getElementById('btn-info').addEventListener('click', () =>
+  document.getElementById('info-modal').classList.remove('hidden'));
+document.getElementById('btn-info-close').addEventListener('click', () =>
+  document.getElementById('info-modal').classList.add('hidden'));
+document.getElementById('info-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+});
+
 document.getElementById('btn-gruppe-add').addEventListener('click', async () => {
   const input = document.getElementById('input-neue-gruppe');
   const name  = input.value.trim();
@@ -389,7 +410,6 @@ document.getElementById('input-neue-gruppe').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('btn-gruppe-add').click();
 });
 
-// Rename / Delete Gruppe (delegated)
 document.getElementById('gruppen-liste').addEventListener('click', async e => {
   const renBtn = e.target.closest('.btn-gruppe-ren');
   if (renBtn) {
@@ -403,24 +423,23 @@ document.getElementById('gruppen-liste').addEventListener('click', async e => {
     }
     return;
   }
-
-  const btn = e.target.closest('.btn-gruppe-del');
-  if (!btn) return;
-  const id = btn.dataset.id;
+  const delBtn = e.target.closest('.btn-gruppe-del');
+  if (!delBtn) return;
+  const id = delBtn.dataset.id;
   const g  = gruppen.find(x => x.id === id);
   const n  = gruppeKartenAnzahl(id);
-  const msg = n > 0
-    ? `Gruppe „${g.name}" und ${n} Karte(n) wirklich löschen?`
-    : `Gruppe „${g.name}" wirklich löschen?`;
-  if (!confirm(msg)) return;
-
+  if (!confirm(n > 0 ? `Gruppe „${g.name}" und ${n} Karte(n) löschen?` : `Gruppe „${g.name}" löschen?`)) return;
   const zuLoeschen = studenten.filter(s => s.gruppeId === id);
   for (const s of zuLoeschen) { await dbDelete('studenten', s.id); revokeUrl(s.id); }
   await dbDelete('gruppen', id);
   gruppen   = gruppen.filter(x => x.id !== id);
   studenten = studenten.filter(s => s.gruppeId !== id);
   renderVerwaltung();
-  toast(`Gruppe gelöscht`);
+  toast('Gruppe gelöscht');
+});
+
+document.getElementById('select-gruppe').addEventListener('change', e => {
+  if (e.target.value) localStorage.setItem('lastGruppeId', e.target.value);
 });
 
 document.getElementById('input-foto').addEventListener('change', e => {
@@ -437,20 +456,20 @@ document.getElementById('input-foto').addEventListener('change', e => {
 
 document.getElementById('form-karte').addEventListener('submit', async e => {
   e.preventDefault();
-  const name    = document.getElementById('input-name').value.trim();
+  const name     = document.getElementById('input-name').value.trim();
   const gruppeId = document.getElementById('select-gruppe').value;
-  const file    = document.getElementById('input-foto').files[0];
+  const file     = document.getElementById('input-foto').files[0];
   if (!name || !gruppeId || !file) return;
 
   const btn = document.getElementById('btn-karte-speichern');
   btn.disabled = true; btn.textContent = 'Wird gespeichert…';
-
   try {
     const blob = await compressPhoto(file);
     const s = { id: Date.now().toString(), name, gruppeId, foto: blob, erstellt: new Date().toISOString() };
     await dbPut('studenten', s);
     studenten.push(s);
-    document.getElementById('form-karte').reset();
+    document.getElementById('input-name').value = '';
+    document.getElementById('input-foto').value = '';
     document.getElementById('foto-vorschau').classList.add('hidden');
     document.getElementById('upload-placeholder').classList.remove('hidden');
     renderVerwaltung();
@@ -467,7 +486,7 @@ document.getElementById('karten-nach-gruppen').addEventListener('click', async e
   if (!btn) return;
   const id = btn.dataset.id;
   const s  = studenten.find(x => x.id === id);
-  if (!confirm(`Karte „${s.name}" wirklich löschen?`)) return;
+  if (!confirm(`Karte „${s.name}" löschen?`)) return;
   await dbDelete('studenten', id);
   revokeUrl(id);
   studenten = studenten.filter(x => x.id !== id);
@@ -496,28 +515,27 @@ document.getElementById('btn-keine-waehlen').addEventListener('click', () => {
 });
 
 document.getElementById('btn-lernen-start').addEventListener('click', () => {
-  const gids = getSelectedGids();
-  lernKarten = mischen(studenten.filter(s => gids.includes(s.gruppeId)));
-  if (!lernKarten.length) return;
-  lernIndex  = 0;
+  const karten = studenten.filter(s => getSelectedGids().includes(s.gruppeId));
+  if (!karten.length) return;
   document.getElementById('lernen-auswahl').classList.add('hidden');
-  document.getElementById('lernen-flashcard').classList.remove('hidden');
-  zeigeKarte();
+  starteSession(karten);
 });
 
 document.getElementById('lernkarte').addEventListener('click', () => {
-  if (!nameVisible) {
-    zeigeName();
-  } else if (lernIndex < lernKarten.length - 1) {
-    lernIndex++; zeigeKarte();
+  const s = lernKarten[lernIndex];
+  if (!answeredIds.has(s.id)) {
+    gewusst++;
+    answeredIds.add(s.id);
   }
+  naechsteKarteOderEnde();
 });
+
 document.getElementById('btn-aufdecken').addEventListener('click', e => {
   e.stopPropagation();
   if (!nameVisible) {
     zeigeName();
-  } else if (lernIndex < lernKarten.length - 1) {
-    lernIndex++; zeigeKarte();
+  } else {
+    naechsteKarteOderEnde();
   }
 });
 
@@ -541,6 +559,17 @@ document.getElementById('btn-beenden').addEventListener('click', () => {
   renderLernAuswahl();
 });
 
+document.getElementById('btn-neue-uebung').addEventListener('click', () => {
+  document.getElementById('lernen-ende').classList.add('hidden');
+  starteSession(lernKarten);
+});
+
+document.getElementById('btn-ende-auswahl').addEventListener('click', () => {
+  document.getElementById('lernen-ende').classList.add('hidden');
+  document.getElementById('lernen-auswahl').classList.remove('hidden');
+  renderLernAuswahl();
+});
+
 document.addEventListener('keydown', e => {
   if (!document.getElementById('lernen-flashcard').classList.contains('hidden')) {
     if (e.key === 'ArrowRight') document.getElementById('btn-weiter').click();
@@ -554,10 +583,8 @@ document.addEventListener('keydown', e => {
 // ============================================================
 
 document.getElementById('btn-export').addEventListener('click', exportDaten);
-
 document.getElementById('btn-import-trigger').addEventListener('click', () =>
   document.getElementById('input-import').click());
-
 document.getElementById('input-import').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
