@@ -100,6 +100,28 @@ function ladeOpenGruppen() {
   } catch(e) {}
 }
 
+// Gruppen-Reihenfolge
+let gruppenReihenfolge = [];
+function saveGruppenReihenfolge() {
+  localStorage.setItem('gruppenReihenfolge', JSON.stringify(gruppenReihenfolge));
+}
+function ladeGruppenReihenfolge() {
+  try {
+    const saved = localStorage.getItem('gruppenReihenfolge');
+    if (saved) gruppenReihenfolge = JSON.parse(saved);
+  } catch(e) {}
+}
+function getSortierteGruppen() {
+  if (!gruppenReihenfolge.length) return gruppen;
+  const ordered = [];
+  gruppenReihenfolge.forEach(id => {
+    const g = gruppen.find(x => x.id === id);
+    if (g) ordered.push(g);
+  });
+  gruppen.forEach(g => { if (!gruppenReihenfolge.includes(g.id)) ordered.push(g); });
+  return ordered;
+}
+
 // import buffer
 let importDatenBuffer = null;
 
@@ -201,13 +223,16 @@ function karteItemHtml(s) {
 function renderVerwaltung() {
   // Gruppen-Liste
   const gList = document.getElementById('gruppen-liste');
-  gList.innerHTML = gruppen.length === 0
+  const sortedG = getSortierteGruppen();
+  gList.innerHTML = sortedG.length === 0
     ? '<p class="hinweis" style="padding:0.5rem 0">Noch keine Gruppen.</p>'
-    : gruppen.map(g => `
+    : sortedG.map((g, i) => `
       <div class="gruppe-item">
         <span class="gruppe-dot"></span>
         <span class="gruppe-name">${esc(g.name)}</span>
         <span class="gruppe-count">${gruppeKartenAnzahl(g.id)} Karte(n)</span>
+        <button class="btn-gruppe-move" data-id="${g.id}" data-dir="up" title="Nach oben"${i === 0 ? ' disabled' : ''}>▲</button>
+        <button class="btn-gruppe-move" data-id="${g.id}" data-dir="down" title="Nach unten"${i === sortedG.length - 1 ? ' disabled' : ''}>▼</button>
         <button class="btn-gruppe-ren" data-id="${g.id}" title="Umbenennen">✏️</button>
         <button class="btn-gruppe-del" data-id="${g.id}" title="Löschen">✕</button>
       </div>`).join('');
@@ -306,7 +331,7 @@ function renderLernAuswahl() {
     document.getElementById('btn-lernen-start').disabled = true;
     return;
   }
-  container.innerHTML = gruppen.map(g => {
+  container.innerHTML = getSortierteGruppen().map(g => {
     const n = gruppeKartenAnzahl(g.id);
     return `
       <div class="gruppe-check-item" data-gid="${g.id}">
@@ -688,8 +713,23 @@ document.getElementById('input-neue-gruppe').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('btn-gruppe-add').click();
 });
 
-// Gruppe umbenennen / löschen
+// Gruppe verschieben / umbenennen / löschen
 document.getElementById('gruppen-liste').addEventListener('click', async e => {
+  const moveBtn = e.target.closest('.btn-gruppe-move');
+  if (moveBtn && !moveBtn.disabled) {
+    const id  = moveBtn.dataset.id;
+    const dir = moveBtn.dataset.dir;
+    const sorted = getSortierteGruppen();
+    const idx = sorted.findIndex(x => x.id === id);
+    if (dir === 'up' && idx > 0)
+      [sorted[idx - 1], sorted[idx]] = [sorted[idx], sorted[idx - 1]];
+    else if (dir === 'down' && idx < sorted.length - 1)
+      [sorted[idx], sorted[idx + 1]] = [sorted[idx + 1], sorted[idx]];
+    gruppenReihenfolge = sorted.map(x => x.id);
+    saveGruppenReihenfolge();
+    renderVerwaltung();
+    return;
+  }
   const renBtn = e.target.closest('.btn-gruppe-ren');
   if (renBtn) {
     const g = gruppen.find(x => x.id === renBtn.dataset.id);
@@ -713,6 +753,8 @@ document.getElementById('gruppen-liste').addEventListener('click', async e => {
   await dbDelete('gruppen', id);
   gruppen   = gruppen.filter(x => x.id !== id);
   studenten = studenten.filter(s => s.gruppeId !== id);
+  gruppenReihenfolge = gruppenReihenfolge.filter(x => x !== id);
+  saveGruppenReihenfolge();
   renderVerwaltung();
   toast('Gruppe gelöscht');
 });
@@ -962,7 +1004,7 @@ document.getElementById('btn-statistik-loeschen').addEventListener('click', asyn
 document.getElementById('btn-export').addEventListener('click', () => {
   if (!gruppen.length) { toast('Keine Gruppen vorhanden'); return; }
   const container = document.getElementById('export-gruppen-liste');
-  container.innerHTML = gruppen.map(g => `
+  container.innerHTML = getSortierteGruppen().map(g => `
     <div class="gruppe-check-item selected" data-gid="${g.id}">
       <div class="check-box" style="background:var(--accent);border-color:var(--accent);color:#000">✓</div>
       <div class="check-label">
@@ -1150,5 +1192,6 @@ if ('serviceWorker' in navigator) {
   await dbInit();
   await ladeAlles();
   ladeOpenGruppen();
+  ladeGruppenReihenfolge();
   renderVerwaltung();
 })();

@@ -300,6 +300,13 @@ select option { background: var(--surface2); color: var(--text); }
 }
 .btn-gruppe-ren:active { color: var(--text); }
 .btn-gruppe-del:active { color: var(--danger); }
+.btn-gruppe-move {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; padding: 0.2rem 0.3rem;
+  border-radius: 4px; font-size: 0.7rem; line-height: 1;
+}
+.btn-gruppe-move:active { color: var(--text); }
+.btn-gruppe-move:disabled { opacity: 0.2; cursor: default; }
 
 /* ── KARTEN (Verwaltung) ───────────────────────────── */
 .gruppe-karten-section { margin-bottom: 0.75rem; }
