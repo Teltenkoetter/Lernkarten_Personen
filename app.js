@@ -3,7 +3,7 @@
 // ============================================================
 
 const DB_NAME = 'lernkarten';
-const DB_VER  = 1;
+const DB_VER  = 2;
 let db;
 
 function dbInit() {
@@ -19,6 +19,8 @@ function dbInit() {
         const s = d.createObjectStore('studenten', { keyPath: 'id' });
         s.createIndex('gruppeId', 'gruppeId');
       }
+      if (!d.objectStoreNames.contains('sitzungen'))
+        d.createObjectStore('sitzungen', { keyPath: 'id' });
     };
   });
 }
@@ -72,12 +74,15 @@ function revokeUrl(id) {
 }
 
 // learning
-let lernKarten   = [];
-let lernIndex    = 0;
-let nameVisible  = false;
-let gewusst      = 0;
-let nichtGewusst = 0;
-const answeredIds = new Set();
+let lernKarten    = [];
+let lernIndex     = 0;
+let nameVisible   = false;
+let gewusst       = 0;
+let nichtGewusst  = 0;
+let lernModus     = 'foto'; // 'foto' = Foto→Name, 'name' = Name→Foto
+const answeredIds     = new Set();
+const gewusstIds      = new Set();
+const nichtGewusstIds = new Set();
 
 // ============================================================
 // PHOTO COMPRESSION
@@ -121,6 +126,7 @@ function gruppeKartenAnzahl(gid) {
 // ============================================================
 
 function renderVerwaltung() {
+  // Gruppen-Liste
   const gList = document.getElementById('gruppen-liste');
   gList.innerHTML = gruppen.length === 0
     ? '<p class="hinweis" style="padding:0.5rem 0">Noch keine Gruppen.</p>'
@@ -133,11 +139,13 @@ function renderVerwaltung() {
         <button class="btn-gruppe-del" data-id="${g.id}" title="Löschen">✕</button>
       </div>`).join('');
 
+  // Select mit gespeicherter letzter Gruppe
   const sel     = document.getElementById('select-gruppe');
   const savedId = localStorage.getItem('lastGruppeId') || sel.value;
   sel.innerHTML = '<option value="">Gruppe wählen…</option>' +
     gruppen.map(g => `<option value="${g.id}"${g.id === savedId ? ' selected' : ''}>${esc(g.name)}</option>`).join('');
 
+  // Karten nach Gruppen
   const container = document.getElementById('karten-nach-gruppen');
   const hinweis   = document.getElementById('keine-karten-hinweis');
   document.getElementById('karten-gesamt').textContent = studenten.length;
@@ -167,6 +175,7 @@ function renderVerwaltung() {
         <div class="karte-item">
           <img src="${getFotoUrl(s)}" alt="${esc(s.name)}" loading="lazy">
           <span class="karte-name">${esc(s.name)}</span>
+          <button class="btn-karte-ren" data-id="${s.id}" title="Umbenennen">✏️</button>
           <button class="btn-karte-del" data-id="${s.id}" title="Löschen">✕</button>
         </div>`).join('')}
     </div>`;
@@ -178,6 +187,7 @@ function renderVerwaltung() {
         <div class="karte-item">
           <img src="${getFotoUrl(s)}" alt="${esc(s.name)}" loading="lazy">
           <span class="karte-name">${esc(s.name)}</span>
+          <button class="btn-karte-ren" data-id="${s.id}" title="Umbenennen">✏️</button>
           <button class="btn-karte-del" data-id="${s.id}" title="Löschen">✕</button>
         </div>`).join('')}
     </div>`;
@@ -222,32 +232,190 @@ function updateLernStartBtn() {
 }
 
 // ============================================================
+// RENDER – STATISTIK
+// ============================================================
+
+async function renderStatistik() {
+  const sitzungen = await dbGetAll('sitzungen');
+  sitzungen.sort((a, b) => new Date(b.datum) - new Date(a.datum));
+
+  // Übersicht
+  document.getElementById('stat-total-sitzungen').textContent = sitzungen.length;
+  if (sitzungen.length === 0) {
+    document.getElementById('stat-avg-score').textContent = '—';
+    document.getElementById('stat-total-abgefragt').textContent = '0';
+  } else {
+    const totalAbgefragt = sitzungen.reduce((s, x) => s + x.total, 0);
+    const avgScore = sitzungen.reduce((s, x) => s + x.score, 0) / sitzungen.length;
+    document.getElementById('stat-avg-score').textContent = Math.round(avgScore) + '%';
+    document.getElementById('stat-total-abgefragt').textContent = totalAbgefragt;
+  }
+
+  // Schwierigste Namen
+  const nameStats = new Map(); // name → { gewusst, nachgeschaut }
+  for (const sitz of sitzungen) {
+    for (const detail of (sitz.details || [])) {
+      if (!nameStats.has(detail.name)) nameStats.set(detail.name, { gewusst: 0, nachgeschaut: 0 });
+      const stat = nameStats.get(detail.name);
+      if (detail.status === 'gewusst') stat.gewusst++;
+      else if (detail.status === 'nachgeschaut') stat.nachgeschaut++;
+    }
+  }
+
+  const schwierigEl = document.getElementById('schwierigste-namen');
+  const keineSchEl  = document.getElementById('keine-schwierig-hinweis');
+
+  const nameArr = [...nameStats.entries()]
+    .filter(([, s]) => s.nachgeschaut > 0)
+    .map(([name, s]) => {
+      const total = s.gewusst + s.nachgeschaut;
+      const rate  = Math.round((s.nachgeschaut / total) * 100);
+      return { name, rate, total };
+    })
+    .sort((a, b) => b.rate - a.rate || b.total - a.total)
+    .slice(0, 8);
+
+  const schwaeBtn = document.getElementById('btn-schwaeche-ueben');
+  if (nameArr.length === 0) {
+    schwierigEl.innerHTML = '';
+    keineSchEl.classList.remove('hidden');
+    schwaeBtn.classList.add('hidden');
+  } else {
+    keineSchEl.classList.add('hidden');
+    schwierigEl.innerHTML = nameArr.map((item, i) => `
+      <div class="schwierig-item">
+        <span class="schwierig-rank">${i + 1}</span>
+        <span class="schwierig-name">${esc(item.name)}</span>
+        <span class="schwierig-rate">${item.rate}% ✗</span>
+      </div>`).join('');
+
+    // Schwächste 20% (min. 5) berechnen
+    const allNamen = [...nameStats.entries()]
+      .filter(([, s]) => s.gewusst + s.nachgeschaut > 0)
+      .map(([name, s]) => {
+        const t = s.gewusst + s.nachgeschaut;
+        return { name, fehlerRate: s.nachgeschaut / t };
+      })
+      .sort((a, b) => b.fehlerRate - a.fehlerRate);
+    const anzahl = Math.max(5, Math.ceil(allNamen.length * 0.2));
+    const schwacheNamen = new Set(allNamen.slice(0, anzahl).map(x => x.name));
+    const schwacheKarten = studenten.filter(s => schwacheNamen.has(s.name));
+    if (schwacheKarten.length > 0) {
+      schwaeBtn.textContent = `⟳ Schwächste ${schwacheKarten.length} Karte${schwacheKarten.length !== 1 ? 'n' : ''} jetzt üben`;
+      schwaeBtn.classList.remove('hidden');
+      schwaeBtn.onclick = () => {
+        showView('lernen');
+        document.getElementById('lernen-auswahl').classList.add('hidden');
+        starteSession(schwacheKarten);
+        toast(`${schwacheKarten.length} schwächste Karte${schwacheKarten.length !== 1 ? 'n' : ''} ausgewählt`);
+      };
+    } else {
+      schwaeBtn.classList.add('hidden');
+    }
+  }
+
+  // Letzte Sitzungen
+  const verlaufEl  = document.getElementById('sitzungen-verlauf');
+  const keineVerlEl = document.getElementById('keine-verlauf-hinweis');
+
+  if (sitzungen.length === 0) {
+    verlaufEl.innerHTML = '';
+    keineVerlEl.classList.remove('hidden');
+  } else {
+    keineVerlEl.classList.add('hidden');
+    verlaufEl.innerHTML = sitzungen.slice(0, 10).map(sitz => {
+      const d = new Date(sitz.datum);
+      const datum = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+      const uhrzeit = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+      const scoreClass = sitz.score >= 75 ? 'gut' : sitz.score >= 50 ? 'mitte' : 'schlecht';
+      return `
+        <div class="sitzung-item">
+          <span class="sitzung-datum">${datum} ${uhrzeit}</span>
+          <span class="sitzung-info">${sitz.total} Karte${sitz.total !== 1 ? 'n' : ''}</span>
+          <span class="sitzung-score ${scoreClass}">${sitz.score}%</span>
+        </div>`;
+    }).join('');
+  }
+}
+
+// ============================================================
+// STATISTICS – SESSION SAVING
+// ============================================================
+
+async function speichereSitzung() {
+  const total = lernKarten.length;
+  if (total === 0) return;
+
+  const details = lernKarten.map(s => {
+    let status = 'übersprungen';
+    if (gewusstIds.has(s.id))      status = 'gewusst';
+    else if (nichtGewusstIds.has(s.id)) status = 'nachgeschaut';
+    return { name: s.name, status };
+  });
+
+  const answeredCount = gewusst + nichtGewusst;
+  const score = answeredCount > 0 ? Math.round((gewusst / answeredCount) * 100) : 0;
+
+  const sitzung = {
+    id:      Date.now().toString(),
+    datum:   new Date().toISOString(),
+    total,
+    gewusst,
+    nichtGewusst,
+    score,
+    details
+  };
+  await dbPut('sitzungen', sitzung);
+}
+
+// ============================================================
 // FLASHCARD LOGIC
 // ============================================================
 
 function zeigeKarte() {
   nameVisible = false;
   document.getElementById('lern-name-overlay').classList.add('hidden');
-  document.getElementById('btn-aufdecken').textContent = 'Name zeigen';
 
   const s = lernKarten[lernIndex];
-  document.getElementById('lern-foto').src = getFotoUrl(s);
   document.getElementById('lern-name-text').textContent = s.name;
   document.getElementById('lern-position').textContent  = `${lernIndex + 1} / ${lernKarten.length}`;
-
   document.getElementById('btn-zurueck').classList.toggle('invisible', lernIndex === 0);
   document.getElementById('btn-weiter').classList.toggle('invisible', lernIndex === lernKarten.length - 1);
+
+  if (lernModus === 'name') {
+    // Name→Foto: Namenanzeige, Foto versteckt
+    document.getElementById('lernkarte-foto-wrapper').classList.add('hidden');
+    document.getElementById('lern-name-karte').classList.remove('hidden');
+    document.getElementById('lern-name-karte-text').textContent = s.name;
+    document.getElementById('btn-aufdecken').textContent = 'Gesicht zeigen';
+  } else {
+    // Foto→Name: Foto zeigen, Namenskarte versteckt
+    document.getElementById('lern-foto').src = getFotoUrl(s);
+    document.getElementById('lernkarte-foto-wrapper').classList.remove('hidden');
+    document.getElementById('lern-name-karte').classList.add('hidden');
+    document.getElementById('btn-aufdecken').textContent = 'Name zeigen';
+  }
 }
 
 function zeigeName() {
   const s = lernKarten[lernIndex];
   if (!answeredIds.has(s.id)) {
     nichtGewusst++;
+    nichtGewusstIds.add(s.id);
     answeredIds.add(s.id);
   }
   nameVisible = true;
-  document.getElementById('lern-name-overlay').classList.remove('hidden');
   const istLetzte = lernIndex === lernKarten.length - 1;
+
+  if (lernModus === 'name') {
+    // Foto aufdecken: Namenskarte verstecken, Foto zeigen
+    document.getElementById('lern-foto').src = getFotoUrl(s);
+    document.getElementById('lernkarte-foto-wrapper').classList.remove('hidden');
+    document.getElementById('lern-name-karte').classList.add('hidden');
+  } else {
+    // Name-Overlay über Foto einblenden
+    document.getElementById('lern-name-overlay').classList.remove('hidden');
+  }
   document.getElementById('btn-aufdecken').textContent = istLetzte ? 'Fertig ✓' : 'Weiter →';
 }
 
@@ -260,7 +428,8 @@ function naechsteKarteOderEnde() {
   }
 }
 
-function zeigeEnde() {
+async function zeigeEnde() {
+  await speichereSitzung();
   document.getElementById('lernen-flashcard').classList.add('hidden');
   document.getElementById('lernen-ende').classList.remove('hidden');
   const total = lernKarten.length;
@@ -275,6 +444,8 @@ function starteSession(karten) {
   gewusst      = 0;
   nichtGewusst = 0;
   answeredIds.clear();
+  gewusstIds.clear();
+  nichtGewusstIds.clear();
   document.getElementById('lernen-ende').classList.add('hidden');
   document.getElementById('lernen-flashcard').classList.remove('hidden');
   zeigeKarte();
@@ -285,7 +456,7 @@ function starteSession(karten) {
 // ============================================================
 
 function showView(name) {
-  ['verwaltung', 'lernen', 'sicherung'].forEach(v =>
+  ['verwaltung', 'lernen', 'statistik', 'sicherung'].forEach(v =>
     document.getElementById(`view-${v}`).classList.toggle('hidden', v !== name));
   document.querySelectorAll('.nav-item').forEach(b =>
     b.classList.toggle('active', b.dataset.view === name));
@@ -294,6 +465,9 @@ function showView(name) {
     document.getElementById('lernen-flashcard').classList.add('hidden');
     document.getElementById('lernen-ende').classList.add('hidden');
     renderLernAuswahl();
+  }
+  if (name === 'statistik') {
+    renderStatistik();
   }
 }
 
@@ -410,6 +584,7 @@ document.getElementById('input-neue-gruppe').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('btn-gruppe-add').click();
 });
 
+// Gruppe umbenennen / löschen
 document.getElementById('gruppen-liste').addEventListener('click', async e => {
   const renBtn = e.target.closest('.btn-gruppe-ren');
   if (renBtn) {
@@ -438,10 +613,12 @@ document.getElementById('gruppen-liste').addEventListener('click', async e => {
   toast('Gruppe gelöscht');
 });
 
+// Letzte Gruppe merken
 document.getElementById('select-gruppe').addEventListener('change', e => {
   if (e.target.value) localStorage.setItem('lastGruppeId', e.target.value);
 });
 
+// Foto Vorschau
 document.getElementById('input-foto').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -454,6 +631,7 @@ document.getElementById('input-foto').addEventListener('change', e => {
   reader.readAsDataURL(file);
 });
 
+// Karte speichern
 document.getElementById('form-karte').addEventListener('submit', async e => {
   e.preventDefault();
   const name     = document.getElementById('input-name').value.trim();
@@ -481,10 +659,23 @@ document.getElementById('form-karte').addEventListener('submit', async e => {
   }
 });
 
+// Karte umbenennen / löschen
 document.getElementById('karten-nach-gruppen').addEventListener('click', async e => {
-  const btn = e.target.closest('.btn-karte-del');
-  if (!btn) return;
-  const id = btn.dataset.id;
+  const renBtn = e.target.closest('.btn-karte-ren');
+  if (renBtn) {
+    const s = studenten.find(x => x.id === renBtn.dataset.id);
+    const newName = prompt('Neuer Name:', s.name);
+    if (newName && newName.trim() && newName.trim() !== s.name) {
+      s.name = newName.trim();
+      await dbPut('studenten', s);
+      renderVerwaltung();
+      toast(`Karte umbenannt in „${s.name}"`);
+    }
+    return;
+  }
+  const delBtn = e.target.closest('.btn-karte-del');
+  if (!delBtn) return;
+  const id = delBtn.dataset.id;
   const s  = studenten.find(x => x.id === id);
   if (!confirm(`Karte „${s.name}" löschen?`)) return;
   await dbDelete('studenten', id);
@@ -497,6 +688,15 @@ document.getElementById('karten-nach-gruppen').addEventListener('click', async e
 // ============================================================
 // EVENTS – LERNEN
 // ============================================================
+
+// Lernmodus-Toggle
+document.querySelectorAll('.lernmodus-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    lernModus = btn.dataset.modus;
+    document.querySelectorAll('.lernmodus-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
 
 document.getElementById('gruppen-checkboxen').addEventListener('click', e => {
   const item = e.target.closest('.gruppe-check-item');
@@ -521,15 +721,18 @@ document.getElementById('btn-lernen-start').addEventListener('click', () => {
   starteSession(karten);
 });
 
+// Foto klicken = Gewusst → weiter
 document.getElementById('lernkarte').addEventListener('click', () => {
   const s = lernKarten[lernIndex];
   if (!answeredIds.has(s.id)) {
     gewusst++;
+    gewusstIds.add(s.id);
     answeredIds.add(s.id);
   }
   naechsteKarteOderEnde();
 });
 
+// Button: Name zeigen ODER Weiter (je nach Zustand)
 document.getElementById('btn-aufdecken').addEventListener('click', e => {
   e.stopPropagation();
   if (!nameVisible) {
@@ -539,6 +742,7 @@ document.getElementById('btn-aufdecken').addEventListener('click', e => {
   }
 });
 
+// Pfeile: Navigation ohne Wertung
 document.getElementById('btn-weiter').addEventListener('click', () => {
   if (lernIndex < lernKarten.length - 1) { lernIndex++; zeigeKarte(); }
 });
@@ -559,9 +763,10 @@ document.getElementById('btn-beenden').addEventListener('click', () => {
   renderLernAuswahl();
 });
 
+// Ende-Screen Buttons
 document.getElementById('btn-neue-uebung').addEventListener('click', () => {
   document.getElementById('lernen-ende').classList.add('hidden');
-  starteSession(lernKarten);
+  starteSession(lernKarten); // gleiche Karten, neu gemischt
 });
 
 document.getElementById('btn-ende-auswahl').addEventListener('click', () => {
@@ -570,12 +775,24 @@ document.getElementById('btn-ende-auswahl').addEventListener('click', () => {
   renderLernAuswahl();
 });
 
+// Tastatur (Desktop)
 document.addEventListener('keydown', e => {
   if (!document.getElementById('lernen-flashcard').classList.contains('hidden')) {
     if (e.key === 'ArrowRight') document.getElementById('btn-weiter').click();
     if (e.key === 'ArrowLeft')  document.getElementById('btn-zurueck').click();
     if (e.key === ' ')          { e.preventDefault(); document.getElementById('btn-aufdecken').click(); }
   }
+});
+
+// ============================================================
+// EVENTS – STATISTIK
+// ============================================================
+
+document.getElementById('btn-statistik-loeschen').addEventListener('click', async () => {
+  if (!confirm('Alle Statistikdaten löschen? Die Karten bleiben erhalten.')) return;
+  await dbClear('sitzungen');
+  renderStatistik();
+  toast('Statistik gelöscht');
 });
 
 // ============================================================
