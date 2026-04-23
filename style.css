@@ -293,13 +293,6 @@ select option { background: var(--surface2); color: var(--text); }
 .gruppe-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
 .gruppe-name { flex: 1; font-weight: 600; font-size: 0.92rem; }
 .gruppe-count { color: var(--muted); font-size: 0.78rem; }
-.btn-gruppe-move {
-  background: none; border: none; color: var(--muted);
-  cursor: pointer; padding: 0.15rem 0.2rem;
-  border-radius: 4px; font-size: 0.55rem; line-height: 1;
-  flex-shrink: 0;
-}
-.btn-gruppe-move:active { color: var(--text); }
 .btn-gruppe-ren, .btn-gruppe-del {
   background: none; border: none; color: var(--muted);
   cursor: pointer; padding: 0.2rem 0.4rem;
