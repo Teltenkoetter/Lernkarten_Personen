@@ -504,14 +504,8 @@ function zeigeKarte() {
 }
 
 function zeigeName() {
-  const s = lernKarten[lernIndex];
-  if (!answeredIds.has(s.id)) {
-    nichtGewusst++;
-    nichtGewusstIds.add(s.id);
-    answeredIds.add(s.id);
-  }
   nameVisible = true;
-  const istLetzte = lernIndex === lernKarten.length - 1;
+  const s = lernKarten[lernIndex];
   if (lernModus === 'name') {
     document.getElementById('lern-foto').src = getFotoUrl(s);
     document.getElementById('lernkarte-foto-wrapper').classList.remove('hidden');
@@ -519,7 +513,7 @@ function zeigeName() {
   } else {
     document.getElementById('lern-name-overlay').classList.remove('hidden');
   }
-  document.getElementById('btn-aufdecken').textContent = istLetzte ? 'Fertig ✓' : 'Weiter →';
+  document.getElementById('btn-aufdecken').textContent = 'Nicht gewusst ✗';
 }
 
 function naechsteKarteOderEnde() {
@@ -933,21 +927,35 @@ document.getElementById('btn-lernen-start').addEventListener('click', () => {
 });
 
 // Foto / Name-Karte klicken = Gewusst → weiter
+// 1. Klick = Name zeigen, 2. Klick = Gewusst ✓
 document.getElementById('lernkarte').addEventListener('click', () => {
-  const s = lernKarten[lernIndex];
-  if (!answeredIds.has(s.id)) {
-    gewusst++;
-    gewusstIds.add(s.id);
-    answeredIds.add(s.id);
+  if (!nameVisible) {
+    zeigeName();
+  } else {
+    const s = lernKarten[lernIndex];
+    if (!answeredIds.has(s.id)) {
+      gewusst++;
+      gewusstIds.add(s.id);
+      answeredIds.add(s.id);
+    }
+    naechsteKarteOderEnde();
   }
-  naechsteKarteOderEnde();
 });
 
-// Button: aufdecken ODER weiter
+// Button: Name zeigen ODER Nicht gewusst ✗
 document.getElementById('btn-aufdecken').addEventListener('click', e => {
   e.stopPropagation();
-  if (!nameVisible) zeigeName();
-  else naechsteKarteOderEnde();
+  if (!nameVisible) {
+    zeigeName();
+  } else {
+    const s = lernKarten[lernIndex];
+    if (!answeredIds.has(s.id)) {
+      nichtGewusst++;
+      nichtGewusstIds.add(s.id);
+      answeredIds.add(s.id);
+    }
+    naechsteKarteOderEnde();
+  }
 });
 
 // Pfeile
