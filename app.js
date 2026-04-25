@@ -277,7 +277,7 @@ function renderVerwaltung() {
   // Gruppiert mit aufklappbaren Sektionen
   const sortiertGruppen = sort === 'gruppe'
     ? [...gruppen].sort((a, b) => a.name.localeCompare(b.name, 'de'))
-    : gruppen;
+    : getSortierteGruppen();
 
   const byGruppe = new Map();
   sortiertGruppen.forEach(g => byGruppe.set(g.id, []));
@@ -491,7 +491,7 @@ function zeigeKarte() {
   document.getElementById('btn-weiter').classList.toggle('invisible', lernIndex === lernKarten.length - 1);
 
   const aufdeckBtn = document.getElementById('btn-aufdecken');
-  aufdeckBtn.classList.remove('hidden');
+  aufdeckBtn.style.visibility = '';
   if (lernModus === 'name') {
     document.getElementById('lernkarte-foto-wrapper').classList.add('hidden');
     document.getElementById('lern-name-karte').classList.remove('hidden');
@@ -520,7 +520,9 @@ function zeigeName(nichtGewusstWerten = false) {
   } else {
     document.getElementById('lern-name-overlay').classList.remove('hidden');
   }
-  document.getElementById('btn-aufdecken').classList.add('hidden');
+  const btn = document.getElementById('btn-aufdecken');
+  btn.textContent = '';
+  btn.style.visibility = 'hidden';
 }
 
 function naechsteKarteOderEnde() {
