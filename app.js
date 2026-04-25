@@ -126,17 +126,10 @@ function getSortierteGruppen() {
 let importDatenBuffer = null;
 
 // feedback
-let feedbackActive = false;
-function zeigeFeedback(typ, callback) {
-  feedbackActive = true;
+function zeigeFeedback(typ) {
   const fb = document.getElementById('lern-feedback');
   fb.textContent = typ === 'gewusst' ? '✓' : '✗';
   fb.className = 'lern-feedback ' + (typ === 'gewusst' ? 'gewusst-ok' : 'nicht-ok');
-  setTimeout(() => {
-    fb.className = 'lern-feedback hidden';
-    feedbackActive = false;
-    callback();
-  }, 700);
 }
 
 // ============================================================
@@ -493,6 +486,7 @@ function zeigeKarte() {
   nameVisible = false;
   document.getElementById('lern-name-overlay').classList.add('hidden');
   document.getElementById('lern-feedback').className = 'lern-feedback hidden';
+  document.getElementById('btn-aufdecken').style.visibility = '';
 
   const s      = lernKarten[lernIndex];
   const gruppe = gruppen.find(g => g.id === s.gruppeId);
@@ -520,12 +514,13 @@ function zeigeKarte() {
   }
 }
 
-function zeigeName(nichtGewusstWerten = false) {
+function zeigeName(wertung) {
+  // wertung = 'gewusst' | 'nicht-gewusst'
   nameVisible = true;
   const s = lernKarten[lernIndex];
-  if (nichtGewusstWerten && !answeredIds.has(s.id)) {
-    nichtGewusst++;
-    nichtGewusstIds.add(s.id);
+  if (!answeredIds.has(s.id)) {
+    if (wertung === 'gewusst') { gewusst++; gewusstIds.add(s.id); }
+    else                       { nichtGewusst++; nichtGewusstIds.add(s.id); }
     answeredIds.add(s.id);
   }
   if (lernModus === 'name') {
@@ -535,10 +530,8 @@ function zeigeName(nichtGewusstWerten = false) {
   } else {
     document.getElementById('lern-name-overlay').classList.remove('hidden');
   }
-  const btn = document.getElementById('btn-aufdecken');
-  btn.textContent = '';
-  btn.style.visibility = 'hidden';
-  if (nichtGewusstWerten) zeigeFeedback('nicht', () => naechsteKarteOderEnde());
+  document.getElementById('btn-aufdecken').style.visibility = 'hidden';
+  zeigeFeedback(wertung === 'gewusst' ? 'gewusst' : 'nicht');
 }
 
 function naechsteKarteOderEnde() {
@@ -952,28 +945,20 @@ document.getElementById('btn-lernen-start').addEventListener('click', () => {
 });
 
 // Foto / Name-Karte klicken = Gewusst → weiter
-// 1. Klick = Name zeigen, 2. Klick = Gewusst ✓
+// 1. Klick = Name + ✓ (gewusst), 2. Klick = weiter
 document.getElementById('lernkarte').addEventListener('click', () => {
-  if (feedbackActive) return;
   if (!nameVisible) {
-    zeigeName();
+    zeigeName('gewusst');       // Name + grüner Haken sofort
   } else {
-    const s = lernKarten[lernIndex];
-    if (!answeredIds.has(s.id)) {
-      gewusst++;
-      gewusstIds.add(s.id);
-      answeredIds.add(s.id);
-    }
-    zeigeFeedback('gewusst', () => naechsteKarteOderEnde());
+    naechsteKarteOderEnde();   // 2. Klick = direkt weiter
   }
 });
 
 // Button: Name zeigen = Nicht gewusst ✗ (rotes Kreuz)
 document.getElementById('btn-aufdecken').addEventListener('click', e => {
   e.stopPropagation();
-  if (feedbackActive) return;
   if (!nameVisible) {
-    zeigeName(true); // zeigt rotes ✗, zählt als nicht gewusst
+    zeigeName('nicht-gewusst'); // Name + rotes ✗, zählt als nicht gewusst
   }
 });
 
