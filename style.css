@@ -39,7 +39,7 @@ header {
 }
 header h1 { font-size: 1.05rem; letter-spacing: 0.3px; color: var(--text); }
 .title-memo { font-weight: 700; }
-.title-pix  { font-weight: 700; color: #4ac0fe; }
+.title-pix  { font-weight: 400; }
 
 .btn-help {
   background: var(--surface2);
@@ -134,7 +134,7 @@ header h1 { font-size: 1.05rem; letter-spacing: 0.3px; color: var(--text); }
 .import-gruppe-zeile:last-child { border-bottom: none; }
 .import-gruppe-name { font-weight: 600; }
 .import-gruppe-details { font-size: 0.78rem; color: var(--muted); }
-.import-gruppe-vorhanden { color: #d4a430; }
+.import-gruppe-vorhanden { color: var(--muted); }
 
 .import-modus-toggle { display: flex; flex-direction: column; gap: 0.4rem; }
 .import-modus-btn {
@@ -540,8 +540,8 @@ select option { background: var(--surface2); color: var(--text); }
   border-radius: 12px; padding: 1rem 1.5rem; flex: 1;
 }
 .stat-zahl { display: block; font-size: 2.8rem; font-weight: 800; line-height: 1; margin-bottom: 0.3rem; }
-.stat-gewusst .stat-zahl { color: #5dd080; }
-.stat-nicht   .stat-zahl { color: #e07070; }
+.stat-gewusst .stat-zahl { color: var(--text); }
+.stat-nicht   .stat-zahl { color: var(--muted); }
 .stat-label { font-size: 0.72rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 .ende-buttons { display: flex; flex-direction: column; gap: 0.75rem; }
 
@@ -559,16 +559,16 @@ select option { background: var(--surface2); color: var(--text); }
 .schwierig-item:last-child { border-bottom: none; }
 .schwierig-rank { font-size: 0.75rem; color: var(--muted); font-weight: 700; width: 20px; text-align: center; flex-shrink: 0; }
 .schwierig-name { flex: 1; font-size: 0.9rem; font-weight: 600; }
-.schwierig-rate { font-size: 0.8rem; font-weight: 700; color: #e07070; }
+.schwierig-rate { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
 
 .sitzung-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
 .sitzung-item:last-child { border-bottom: none; }
 .sitzung-datum { font-size: 0.78rem; color: var(--muted); flex-shrink: 0; width: 80px; }
 .sitzung-info { flex: 1; font-size: 0.85rem; }
 .sitzung-score { font-size: 0.88rem; font-weight: 700; }
-.sitzung-score.gut { color: #5dd080; }
-.sitzung-score.mitte { color: #d4a430; }
-.sitzung-score.schlecht { color: #e07070; }
+.sitzung-score.gut { color: var(--text); }
+.sitzung-score.mitte { color: var(--muted); }
+.sitzung-score.schlecht { color: var(--muted); }
 
 .btn-schwaeche {
   display: block; width: 100%; margin-top: 0.85rem;
@@ -586,7 +586,7 @@ select option { background: var(--surface2); color: var(--text); }
 .sicherung-info { flex: 1; }
 .sicherung-info strong { display: block; font-size: 0.93rem; margin-bottom: 0.2rem; }
 .sicherung-info p { font-size: 0.8rem; color: var(--muted); }
-.warnung { font-size: 0.8rem; color: #b07030; margin-top: 0.75rem; }
+.warnung { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
 .info-card { background: var(--surface2); }
 .info-card strong { display: block; font-size: 0.88rem; margin-bottom: 0.6rem; }
 
