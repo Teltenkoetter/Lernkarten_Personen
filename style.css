@@ -39,7 +39,7 @@ header {
 }
 header h1 { font-size: 1.05rem; letter-spacing: 0.3px; color: var(--text); }
 .title-memo { font-weight: 700; }
-.title-pix  { font-weight: 700; color: #e8a020; }
+.title-pix  { font-weight: 700; color: #4ac0fe; }
 
 .btn-help {
   background: var(--surface2);
