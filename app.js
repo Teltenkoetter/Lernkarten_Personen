@@ -74,12 +74,13 @@ function revokeUrl(id) {
 }
 
 // learning
-let lernKarten    = [];
-let lernIndex     = 0;
-let nameVisible   = false;
-let gewusst       = 0;
-let nichtGewusst  = 0;
-let lernModus     = 'foto'; // 'foto' = Foto→Name, 'name' = Name→Foto
+let lernKarten         = [];
+let lernIndex          = 0;
+let nameVisible        = false;
+let gewusst            = 0;
+let nichtGewusst       = 0;
+let lernModus          = 'foto'; // 'foto' = Foto→Name, 'name' = Name→Foto
+let aktuelleWertung    = null;   // 'gewusst' | 'nicht' – aktuell angezeigte Karte
 const answeredIds     = new Set();
 const gewusstIds      = new Set();
 const nichtGewusstIds = new Set();
@@ -487,7 +488,8 @@ async function speichereSitzung() {
 // ============================================================
 
 function zeigeKarte() {
-  nameVisible = false;
+  nameVisible     = false;
+  aktuelleWertung = null;
   document.getElementById('lern-name-overlay').classList.add('hidden');
   document.getElementById('lern-feedback').className = 'lern-feedback hidden';
   document.getElementById('btn-aufdecken').style.visibility = '';
@@ -528,7 +530,8 @@ function zeigeKarte() {
 }
 
 function zeigeName(wertung) {
-  nameVisible = true;
+  nameVisible     = true;
+  aktuelleWertung = wertung;
   const s           = lernKarten[lernIndex];
   const kartenModus = s.modus || 'foto';
   if (!answeredIds.has(s.id)) {
@@ -1046,6 +1049,24 @@ document.getElementById('btn-zurueck').addEventListener('click', () => {
 
 document.getElementById('btn-mischen').addEventListener('click', () => {
   mischen(lernKarten); lernIndex = 0; zeigeKarte(); toast('Karten gemischt');
+});
+
+// Toggle ✓ ↔ ✗ wenn auf Feedback-Symbol geklickt wird
+document.getElementById('lern-feedback').addEventListener('click', e => {
+  e.stopPropagation();
+  if (!nameVisible || !aktuelleWertung) return;
+  const s = lernKarten[lernIndex];
+  if (aktuelleWertung === 'gewusst') {
+    gewusst--;          gewusstIds.delete(s.id);
+    nichtGewusst++;     nichtGewusstIds.add(s.id);
+    aktuelleWertung = 'nicht';
+    zeigeFeedback('nicht');
+  } else {
+    nichtGewusst--;     nichtGewusstIds.delete(s.id);
+    gewusst++;          gewusstIds.add(s.id);
+    aktuelleWertung = 'gewusst';
+    zeigeFeedback('gewusst');
+  }
 });
 document.getElementById('btn-beenden').addEventListener('click', () => {
   document.getElementById('lernen-flashcard').classList.add('hidden');

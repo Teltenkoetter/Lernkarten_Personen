@@ -39,7 +39,7 @@ header {
 }
 header h1 { font-size: 1.05rem; letter-spacing: 0.3px; color: var(--text); }
 .title-memo { font-weight: 700; }
-.title-pix  { font-weight: 400; }
+.title-pix  { font-weight: 300; }
 
 .btn-help {
   background: var(--surface2);
@@ -505,6 +505,8 @@ textarea.input-vorderseite::placeholder { color: var(--muted); }
   position: absolute; pointer-events: none;
   font-size: 2.4rem; font-weight: 900; line-height: 1;
 }
+.lern-feedback.gewusst-ok,
+.lern-feedback.nicht-ok   { pointer-events: auto; cursor: pointer; }
 .lern-feedback.gewusst-ok { color: #4caf50; }
 .lern-feedback.nicht-ok   { color: #cc4444; }
 .lernkarte-foto-wrapper { flex: 1; min-height: 0; }

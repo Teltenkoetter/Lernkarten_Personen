@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon.svg">
   <title>MemoPix</title>
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=23">
 </head>
 <body>
 
@@ -32,19 +32,27 @@
           <div class="anleitung-zeilen">
             <div class="anleitung-zeile">
               <span class="anleitung-icon">🖼️</span>
-              <div class="anleitung-text"><strong>Bild → Begriff</strong> — Bild sehen, Begriff erinnern · Bild tippen = gewusst</div>
+              <div class="anleitung-text"><strong>Foto-Karte: Bild → Begriff</strong> — Bild sehen, Begriff erinnern · Bild tippen = gewusst (✓)</div>
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">📝</span>
-              <div class="anleitung-text"><strong>Begriff → Bild</strong> — Begriff lesen, Bild vorstellen · Begriff tippen = gewusst</div>
+              <div class="anleitung-text"><strong>Text-Karte: Definition → Begriff</strong> — Text lesen, Begriff erinnern · Text tippen = gewusst (✓)</div>
+            </div>
+            <div class="anleitung-zeile">
+              <span class="anleitung-icon">🔄</span>
+              <div class="anleitung-text"><strong>Foto-Karte umgekehrt</strong> — Begriff lesen, Bild vorstellen (Modus „Begriff → Bild")</div>
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">🔍</span>
               <div class="anleitung-text"><strong>„Begriff zeigen"</strong> — Antwort aufdecken, zählt als nachgeschaut (✗)</div>
             </div>
             <div class="anleitung-zeile">
+              <span class="anleitung-icon">✓✗</span>
+              <div class="anleitung-text"><strong>Wertung korrigieren</strong> — ✓ oder ✗ antippen, um zwischen „gewusst" und „nicht gewusst" zu wechseln</div>
+            </div>
+            <div class="anleitung-zeile">
               <span class="anleitung-icon">💬</span>
-              <div class="anleitung-text"><strong>Notiz</strong> — erscheint beim Aufdecken als Zusatzinfo zum Begriff</div>
+              <div class="anleitung-text"><strong>Notiz</strong> — erscheint beim Aufdecken als Zusatzinfo (bei Foto- und Text-Karten)</div>
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">↔️</span>
@@ -116,7 +124,7 @@
             </div>
           </div>
         </div>
-        <p class="modal-meta">Version 1.5 · Klaus Teltenkötter 2026</p>
+        <p class="modal-meta">Version 1.6 · Klaus Teltenkötter 2026</p>
       </div>
     </div>
   </div>
@@ -460,6 +468,6 @@
   </nav>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js?v=21"></script>
+  <script src="app.js?v=23"></script>
 </body>
 </html>
