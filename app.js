@@ -514,15 +514,23 @@ function zeigeKarte() {
   const aufdeckBtn = document.getElementById('btn-aufdecken');
   aufdeckBtn.style.visibility = '';
 
-  if (kartenModus === 'text') {
+  if (kartenModus === 'text' && lernModus === 'name') {
+    // Text-Karte umgekehrt: Begriff vorne → Definition hinten
+    document.getElementById('lern-name-karte').classList.remove('hidden');
+    document.getElementById('lern-name-karte-text').textContent = s.name;
+    aufdeckBtn.textContent = 'Definition zeigen';
+  } else if (kartenModus === 'text') {
+    // Text-Karte normal: Definition vorne → Begriff hinten
     document.getElementById('lern-vorderseite-text').textContent = s.vorderseite || '';
     document.getElementById('lernkarte-text-vorderseite').classList.remove('hidden');
     aufdeckBtn.textContent = 'Begriff zeigen';
   } else if (lernModus === 'name') {
+    // Foto-Karte umgekehrt: Begriff vorne → Bild hinten
     document.getElementById('lern-name-karte').classList.remove('hidden');
     document.getElementById('lern-name-karte-text').textContent = s.name;
     aufdeckBtn.textContent = 'Bild zeigen';
   } else {
+    // Foto-Karte normal: Bild vorne → Begriff hinten
     document.getElementById('lern-foto').src = getFotoUrl(s);
     document.getElementById('lernkarte-foto-wrapper').classList.remove('hidden');
     aufdeckBtn.textContent = 'Begriff zeigen';
@@ -539,23 +547,36 @@ function zeigeName(wertung) {
     else                       { nichtGewusst++; nichtGewusstIds.add(s.id); }
     answeredIds.add(s.id);
   }
-  if (kartenModus === 'text') {
+  if (kartenModus === 'text' && lernModus === 'name') {
+    // Text-Karte umgekehrt aufdecken: Definition anzeigen
+    document.getElementById('lern-name-karte').classList.add('hidden');
+    document.getElementById('lern-vorderseite-text').textContent = s.vorderseite || '';
+    document.getElementById('lernkarte-text-vorderseite').classList.remove('hidden');
+    // Notiz im Text-Bereich
+    const notizRueck = document.getElementById('lern-notiz-text-rueck');
+    if (s.notiz) { notizRueck.textContent = s.notiz; notizRueck.classList.remove('hidden'); }
+    else { notizRueck.classList.add('hidden'); }
+  } else if (kartenModus === 'text') {
+    // Text-Karte normal aufdecken: Begriff im Overlay
     document.getElementById('lernkarte-text-vorderseite').classList.add('hidden');
     document.getElementById('lern-name-overlay').classList.remove('hidden');
+    const notizEl = document.getElementById('lern-notiz-text');
+    if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
+    else { notizEl.classList.add('hidden'); }
   } else if (lernModus === 'name') {
+    // Foto-Karte umgekehrt aufdecken: Bild anzeigen
     document.getElementById('lern-foto').src = getFotoUrl(s);
     document.getElementById('lernkarte-foto-wrapper').classList.remove('hidden');
     document.getElementById('lern-name-karte').classList.add('hidden');
+    const notizEl = document.getElementById('lern-notiz-text');
+    if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
+    else { notizEl.classList.add('hidden'); }
   } else {
+    // Foto-Karte normal aufdecken: Begriff im Overlay
     document.getElementById('lern-name-overlay').classList.remove('hidden');
-  }
-  // Notiz anzeigen falls vorhanden
-  const notizEl = document.getElementById('lern-notiz-text');
-  if (s.notiz) {
-    notizEl.textContent = s.notiz;
-    notizEl.classList.remove('hidden');
-  } else {
-    notizEl.classList.add('hidden');
+    const notizEl = document.getElementById('lern-notiz-text');
+    if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
+    else { notizEl.classList.add('hidden'); }
   }
   document.getElementById('btn-aufdecken').style.visibility = 'hidden';
   zeigeFeedback(wertung === 'gewusst' ? 'gewusst' : 'nicht');
