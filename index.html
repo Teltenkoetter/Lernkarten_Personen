@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="MemoPix">
+  <meta name="apple-mobile-web-app-title" content="MemoFix">
   <meta name="theme-color" content="#080808">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon.svg">
-  <title>MemoPix</title>
+  <title>MemoFix</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=25">
+  <link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
 
   <header>
-    <h1><span class="title-memo">Memo</span><span class="title-pix">Pix</span></h1>
+    <h1><span class="title-memo">Memo</span><span class="title-pix">Fix</span></h1>
     <button id="btn-info" class="btn-help" title="Hilfe">?</button>
   </header>
 
@@ -39,7 +39,7 @@
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">📝</span>
-              <div class="anleitung-text"><strong>Text-Karte: Definition → Begriff</strong> — Text lesen, Begriff erinnern · Karte antippen → dreht sich um (✓)</div>
+              <div class="anleitung-text"><strong>Begriff-Karte: Begriff → Info</strong> — Begriff sehen, Info/Definition erinnern · Karte antippen → dreht sich um (✓)</div>
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">🔄</span>
@@ -55,7 +55,7 @@
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">💬</span>
-              <div class="anleitung-text"><strong>Notiz</strong> — erscheint beim Aufdecken als Zusatzinfo (bei Foto- und Text-Karten)</div>
+              <div class="anleitung-text"><strong>Notiz</strong> — erscheint beim Aufdecken als Zusatzinfo (bei Foto- und Begriff-Karten)</div>
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">↔️</span>
@@ -89,7 +89,7 @@
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">📝</span>
-              <div class="anleitung-text"><strong>Text-Karte</strong> — Definition/Erklärung als Vorderseite, Begriff als Rückseite</div>
+              <div class="anleitung-text"><strong>Begriff-Karte</strong> — Begriff als Vorderseite, Info/Definition als Rückseite</div>
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">✏️</span>
@@ -127,7 +127,7 @@
             </div>
           </div>
         </div>
-        <p class="modal-meta">Version 1.7 · Klaus Teltenkötter 2026</p>
+        <p class="modal-meta">Version 1.8 · Klaus Teltenkötter 2026</p>
       </div>
     </div>
   </div>
@@ -236,7 +236,7 @@
             <label>Karten-Inhalt</label>
             <div class="karten-modus-chips">
               <button type="button" class="karten-modus-chip active" id="chip-foto">📷 Foto</button>
-              <button type="button" class="karten-modus-chip" id="chip-text">📝 Text</button>
+              <button type="button" class="karten-modus-chip" id="chip-text">📖 Begriff</button>
             </div>
             <div id="foto-bereich">
               <div class="foto-upload" id="foto-upload">
@@ -295,12 +295,12 @@
           </div>
           <div class="lernmodus-toggle">
             <button class="lernmodus-btn active" data-modus="foto" id="btn-modus-foto">
-              <div class="modus-icons">👤 → 📝</div>
-              <div class="modus-label">Foto → Name</div>
+              <div class="modus-label">Normal</div>
+              <div class="modus-desc">📷 Foto · 📖 Begriff → Lösung</div>
             </button>
             <button class="lernmodus-btn" data-modus="name" id="btn-modus-name">
-              <div class="modus-icons">📝 → 👤</div>
-              <div class="modus-label">Name → Foto</div>
+              <div class="modus-label">Umgekehrt</div>
+              <div class="modus-desc">Lösung → 📷 Foto · 📖 Begriff</div>
             </button>
           </div>
           <button id="btn-lernen-start" class="btn-primary btn-large" disabled>Lernen starten</button>
@@ -485,6 +485,6 @@
   </nav>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>

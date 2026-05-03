@@ -555,15 +555,15 @@ function zeigeKarte() {
   aufdeckBtn.style.visibility = '';
 
   if (kartenModus === 'text' && lernModus === 'name') {
-    // Text-Karte umgekehrt: Begriff vorne → Definition hinten
-    document.getElementById('lern-name-karte').classList.remove('hidden');
-    document.getElementById('lern-name-karte-text').textContent = s.name;
-    aufdeckBtn.textContent = 'Definition zeigen';
-  } else if (kartenModus === 'text') {
-    // Text-Karte normal: Definition vorne → Begriff hinten
+    // Begriff-Karte UMGEKEHRT: Info/Definition vorne → Begriff aufdecken
     document.getElementById('lern-vorderseite-text').textContent = s.vorderseite || '';
     document.getElementById('lernkarte-text-vorderseite').classList.remove('hidden');
     aufdeckBtn.textContent = 'Begriff zeigen';
+  } else if (kartenModus === 'text') {
+    // Begriff-Karte NORMAL (Default): Begriff vorne → Info/Definition aufdecken
+    document.getElementById('lern-name-karte').classList.remove('hidden');
+    document.getElementById('lern-name-karte-text').textContent = s.name;
+    aufdeckBtn.textContent = 'Info zeigen';
   } else if (lernModus === 'name') {
     // Foto-Karte umgekehrt: Begriff vorne → Bild hinten
     document.getElementById('lern-name-karte').classList.remove('hidden');
@@ -588,21 +588,20 @@ function zeigeName(wertung) {
     answeredIds.add(s.id);
   }
   if (kartenModus === 'text' && lernModus === 'name') {
-    // Text-Karte umgekehrt aufdecken: Definition anzeigen
-    document.getElementById('lern-name-karte').classList.add('hidden');
-    document.getElementById('lern-vorderseite-text').textContent = s.vorderseite || '';
-    document.getElementById('lernkarte-text-vorderseite').classList.remove('hidden');
-    // Notiz im Text-Bereich
-    const notizRueck = document.getElementById('lern-notiz-text-rueck');
-    if (s.notiz) { notizRueck.textContent = s.notiz; notizRueck.classList.remove('hidden'); }
-    else { notizRueck.classList.add('hidden'); }
-  } else if (kartenModus === 'text') {
-    // Text-Karte normal aufdecken: Begriff im Overlay
+    // Begriff-Karte umgekehrt aufdecken: Begriff im Overlay zeigen (Info/Definition war vorne)
     document.getElementById('lernkarte-text-vorderseite').classList.add('hidden');
     document.getElementById('lern-name-overlay').classList.remove('hidden');
     const notizEl = document.getElementById('lern-notiz-text');
     if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
     else { notizEl.classList.add('hidden'); }
+  } else if (kartenModus === 'text') {
+    // Begriff-Karte normal aufdecken: Info/Definition anzeigen (Begriff war vorne)
+    document.getElementById('lern-name-karte').classList.add('hidden');
+    document.getElementById('lern-vorderseite-text').textContent = s.vorderseite || '';
+    document.getElementById('lernkarte-text-vorderseite').classList.remove('hidden');
+    const notizRueck = document.getElementById('lern-notiz-text-rueck');
+    if (s.notiz) { notizRueck.textContent = s.notiz; notizRueck.classList.remove('hidden'); }
+    else { notizRueck.classList.add('hidden'); }
   } else if (lernModus === 'name') {
     // Foto-Karte umgekehrt aufdecken: Bild anzeigen
     document.getElementById('lern-foto').src = getFotoUrl(s);
@@ -1271,7 +1270,7 @@ document.getElementById('btn-export-start').addEventListener('click', async () =
   const url  = URL.createObjectURL(blob);
   Object.assign(document.createElement('a'), {
     href: url,
-    download: `memopix-${gruppenTeil}-${datum}.json`
+    download: `memofix-${gruppenTeil}-${datum}.json`
   }).click();
   URL.revokeObjectURL(url);
   document.getElementById('export-modal').classList.add('hidden');
@@ -1377,7 +1376,7 @@ if ('serviceWorker' in navigator) {
 // ============================================================
 
 async function erstelleTutorialGruppeWennNeu() {
-  if (localStorage.getItem('memopix-tutorial-created') || localStorage.getItem('snapmatch-tutorial-created')) return;
+  if (localStorage.getItem('memofix-tutorial-created') || localStorage.getItem('memopix-tutorial-created') || localStorage.getItem('snapmatch-tutorial-created')) return;
 
   const gruppeId = 'tutorial-' + Date.now();
 
@@ -1423,7 +1422,7 @@ async function erstelleTutorialGruppeWennNeu() {
     });
   }
 
-  localStorage.setItem('memopix-tutorial-created', '1');
+  localStorage.setItem('memofix-tutorial-created', '1');
 }
 
 // ============================================================

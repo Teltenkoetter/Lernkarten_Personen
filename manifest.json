@@ -1,7 +1,7 @@
 {
-  "name": "MemoPix",
-  "short_name": "MemoPix",
-  "description": "Bilder und Begriffe spielend lernen",
+  "name": "MemoFix",
+  "short_name": "MemoFix",
+  "description": "Bilder und Begriffe gezielt lernen",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#1a1a2e",
