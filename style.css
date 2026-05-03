@@ -915,12 +915,19 @@ textarea.input-vorderseite::placeholder { color: var(--muted); }
 
 /* ── LERNEN – Sammlung-Header ──────────────────────── */
 .lern-sammlung-header {
+  display: flex; align-items: center; gap: 0.35rem;
   font-size: 0.68rem; font-weight: 700;
   color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;
   padding: 0.6rem 0.25rem 0.2rem;
   margin-top: 0.2rem;
+  cursor: pointer; user-select: none;
+  border-radius: 4px;
+  transition: color 0.15s;
 }
+.lern-sammlung-header:hover { color: var(--text); }
 .lern-sammlung-header:first-child { margin-top: 0; padding-top: 0; }
+.lern-sammlung-toggle { font-size: 0.6rem; opacity: 0.7; flex-shrink: 0; }
+.lern-sammlung-body.hidden { display: none; }
 
 /* ── ALLE KARTEN – Sammlung-Trennlinie ─────────────── */
 .karten-sammlung-header {

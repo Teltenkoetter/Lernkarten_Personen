@@ -144,9 +144,26 @@ function getSortierteGruppen() {
   return ordered;
 }
 
-// sammlung ordering + open state
+// sammlung ordering + open state (Verwaltung)
 let sammlungenReihenfolge = [];
 const openSammlungen = new Set();
+
+// open state for sammlungen in Lernen-Auswahl
+const openLernSammlungen = new Set();
+function saveOpenLernSammlungen() {
+  localStorage.setItem('openLernSammlungen', JSON.stringify([...openLernSammlungen]));
+}
+function ladeOpenLernSammlungen() {
+  try {
+    const s = localStorage.getItem('openLernSammlungen');
+    if (s) JSON.parse(s).forEach(id => openLernSammlungen.add(id));
+    else {
+      // Default: alle offen
+      sammlungen.forEach(s => openLernSammlungen.add(s.id));
+      openLernSammlungen.add('__orphan__');
+    }
+  } catch(e) {}
+}
 function saveSammlungenReihenfolge() {
   localStorage.setItem('sammlungenReihenfolge', JSON.stringify(sammlungenReihenfolge));
 }
@@ -178,6 +195,23 @@ function getSortierteGruppenInSammlung(sid) {
   inSam.forEach(g => { if (!gruppenReihenfolge.includes(g.id)) ordered.push(g); });
   return ordered;
 }
+// Repariert Gruppen ohne gültige Sammlung (Migration-Fallback)
+async function repairOrphanGruppen() {
+  const orphans = gruppen.filter(g => !g.sammlungId || !sammlungen.find(s => s.id === g.sammlungId));
+  if (!orphans.length) return;
+  // Bestehende "Allgemein"-Sammlung suchen oder neu anlegen
+  let allgemein = sammlungen.find(s => s.name === 'Allgemein');
+  if (!allgemein) {
+    allgemein = { id: 'sammlung-allgemein', name: 'Allgemein', erstellt: new Date().toISOString() };
+    await dbPut('sammlungen', allgemein);
+    sammlungen.push(allgemein);
+  }
+  for (const g of orphans) {
+    g.sammlungId = allgemein.id;
+    await dbPut('gruppen', g);
+  }
+}
+
 async function addGruppeInSammlung(sid, inputEl) {
   const name = inputEl.value.trim();
   if (!name) return;
@@ -368,6 +402,31 @@ function renderVerwaltung() {
           </div>
         </div>`;
     }).join('');
+
+    // ── Orphan-Gruppen: "Ohne Sammlung" Abschnitt ────────
+    const orphanGs = gruppen.filter(g => !g.sammlungId || !sammlungen.find(s => s.id === g.sammlungId));
+    if (orphanGs.length) {
+      sammlListEl.innerHTML += `
+        <div class="sammlung-section sammlung-section--orphan">
+          <div class="sammlung-header" data-sid="__orphan__">
+            <span class="sammlung-toggle-icon">${openSammlungen.has('__orphan__') ? '▼' : '▶'}</span>
+            <span class="sammlung-name-text" style="opacity:.65">Ohne Sammlung</span>
+            <span class="sammlung-count">${orphanGs.length} Gr.</span>
+            <div class="sammlung-btns"></div>
+          </div>
+          <div class="sammlung-body${openSammlungen.has('__orphan__') ? '' : ' hidden'}" id="sammlung-body-__orphan__">
+            ${orphanGs.map(g => `
+              <div class="gruppe-item">
+                <span class="gruppe-dot"></span>
+                <span class="gruppe-name">${esc(g.name)}</span>
+                <span class="gruppe-count">${gruppeKartenAnzahl(g.id)} K.</span>
+                <button class="btn-gruppe-move-sammlung" data-id="${g.id}" title="Sammlung zuweisen">📁</button>
+                <button class="btn-gruppe-ren" data-id="${g.id}">✏️</button>
+                <button class="btn-gruppe-del" data-id="${g.id}">✕</button>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    }
   }
 
   // ── Gruppe-Select mit Optgroups ───────────────────────
@@ -483,40 +542,49 @@ function renderLernAuswahl() {
   }
   const sortierteSammlungen = getSortierteSammlungen();
   let html = '';
-  sortierteSammlungen.forEach(sam => {
-    const gs = getSortierteGruppenInSammlung(sam.id);
-    if (!gs.length) return;
-    html += `<div class="lern-sammlung-header">${esc(sam.name)}</div>`;
-    html += gs.map(g => {
+
+  function lernGruppenHtml(gs, showIcon = true) {
+    return gs.map(g => {
       const n     = gruppeKartenAnzahl(g.id);
       const fotoC = studenten.filter(s => s.gruppeId === g.id && s.modus !== 'text').length;
       const textC = studenten.filter(s => s.gruppeId === g.id && s.modus === 'text').length;
-      const icon  = fotoC > 0 && textC > 0 ? '📷 · 📖' : textC > 0 ? '📖' : '📷';
+      const icon  = showIcon
+        ? (fotoC > 0 && textC > 0 ? '📷 · 📖' : textC > 0 ? '📖' : '📷')
+        : '';
       return `
         <div class="gruppe-check-item" data-gid="${g.id}">
           <div class="check-box">✓</div>
           <div class="check-label">
             <strong>${esc(g.name)}</strong>
-            <span>${n} Karte${n !== 1 ? 'n' : ''} · ${icon}</span>
+            <span>${n} Karte${n !== 1 ? 'n' : ''}${icon ? ' · ' + icon : ''}</span>
           </div>
         </div>`;
     }).join('');
+  }
+
+  sortierteSammlungen.forEach(sam => {
+    const gs = getSortierteGruppenInSammlung(sam.id);
+    if (!gs.length) return;
+    const isOpen = openLernSammlungen.has(sam.id);
+    html += `<div class="lern-sammlung-header" data-lern-sid="${sam.id}">
+      <span class="lern-sammlung-toggle">${isOpen ? '▼' : '▶'}</span>
+      <span>${esc(sam.name)}</span>
+    </div>
+    <div class="lern-sammlung-body${isOpen ? '' : ' hidden'}" data-lern-sid="${sam.id}">
+      ${lernGruppenHtml(gs)}
+    </div>`;
   });
   // Orphan-Gruppen
   const orphans = gruppen.filter(g => !g.sammlungId || !sammlungen.find(s => s.id === g.sammlungId));
   if (orphans.length) {
-    html += `<div class="lern-sammlung-header">Ohne Sammlung</div>`;
-    html += orphans.map(g => {
-      const n = gruppeKartenAnzahl(g.id);
-      return `
-        <div class="gruppe-check-item" data-gid="${g.id}">
-          <div class="check-box">✓</div>
-          <div class="check-label">
-            <strong>${esc(g.name)}</strong>
-            <span>${n} Karte${n !== 1 ? 'n' : ''}</span>
-          </div>
-        </div>`;
-    }).join('');
+    const isOpen = openLernSammlungen.has('__orphan__');
+    html += `<div class="lern-sammlung-header" data-lern-sid="__orphan__">
+      <span class="lern-sammlung-toggle">${isOpen ? '▼' : '▶'}</span>
+      <span>Ohne Sammlung</span>
+    </div>
+    <div class="lern-sammlung-body${isOpen ? '' : ' hidden'}" data-lern-sid="__orphan__">
+      ${lernGruppenHtml(orphans, false)}
+    </div>`;
   }
   container.innerHTML = html;
   updateLernStartBtn();
@@ -1337,6 +1405,18 @@ document.querySelectorAll('.lernmodus-btn').forEach(btn => {
 });
 
 document.getElementById('gruppen-checkboxen').addEventListener('click', e => {
+  // Sammlung auf-/zuklappen
+  const sammlHdr = e.target.closest('.lern-sammlung-header');
+  if (sammlHdr) {
+    const sid = sammlHdr.dataset.lernSid;
+    if (openLernSammlungen.has(sid)) openLernSammlungen.delete(sid); else openLernSammlungen.add(sid);
+    saveOpenLernSammlungen();
+    const body = document.querySelector(`.lern-sammlung-body[data-lern-sid="${sid}"]`);
+    const icon = sammlHdr.querySelector('.lern-sammlung-toggle');
+    if (body) body.classList.toggle('hidden', !openLernSammlungen.has(sid));
+    if (icon) icon.textContent = openLernSammlungen.has(sid) ? '▼' : '▶';
+    return;
+  }
   const item = e.target.closest('.gruppe-check-item');
   if (!item) return;
   item.classList.toggle('selected');
@@ -1724,9 +1804,11 @@ async function erstelleTutorialGruppeWennNeu() {
   await dbInit();
   await erstelleTutorialGruppeWennNeu();
   await ladeAlles();
+  await repairOrphanGruppen();
   ladeOpenGruppen();
   ladeGruppenReihenfolge();
   ladeSammlungenReihenfolge();
   ladeOpenSammlungen();
+  ladeOpenLernSammlungen();
   renderVerwaltung();
 })();
