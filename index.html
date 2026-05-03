@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=26">
+  <link rel="stylesheet" href="style.css?v=27">
 </head>
 <body>
 
@@ -127,7 +127,7 @@
             </div>
           </div>
         </div>
-        <p class="modal-meta">Version 1.8 · Klaus Teltenkötter 2026</p>
+        <p class="modal-meta">Version 1.9 · Klaus Teltenkötter 2026</p>
       </div>
     </div>
   </div>
@@ -141,7 +141,7 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="karte-edit-name">Begriff / Name</label>
+          <label for="karte-edit-name" id="karte-edit-name-label">Name</label>
           <input type="text" id="karte-edit-name" maxlength="100">
         </div>
         <div class="form-group">
@@ -211,12 +211,16 @@
     <section id="view-verwaltung" class="view">
 
       <div class="card">
-        <div class="card-header"><h2>Gruppen</h2></div>
-        <div id="gruppen-liste" class="gruppen-liste"></div>
-        <div class="input-row">
-          <input type="text" id="input-neue-gruppe" placeholder="Neue Gruppe…" maxlength="60">
-          <button id="btn-gruppe-add" class="btn-icon" title="Hinzufügen">+</button>
+        <div class="card-header">
+          <h2>Sammlungen &amp; Gruppen</h2>
+          <span id="sammlungen-badge" class="badge">0</span>
         </div>
+        <div class="input-row" style="margin-bottom:0.75rem">
+          <input type="text" id="input-neue-sammlung" placeholder="Neue Sammlung…" maxlength="60">
+          <button id="btn-sammlung-add" class="btn-icon" title="Sammlung hinzufügen">+</button>
+        </div>
+        <div id="sammlungen-liste"></div>
+        <p id="keine-sammlungen-hinweis" class="hinweis hidden">Noch keine Sammlungen. Bitte eine Sammlung anlegen.</p>
       </div>
 
       <div class="card">
@@ -229,8 +233,8 @@
             </select>
           </div>
           <div class="form-group">
-            <label for="input-name">Begriff / Name</label>
-            <input type="text" id="input-name" placeholder="Begriff oder Name…" required maxlength="100">
+            <label for="input-name" id="label-input-name">Name</label>
+            <input type="text" id="input-name" placeholder="Name oder Begriff…" required maxlength="100">
           </div>
           <div class="form-group">
             <label>Karten-Inhalt</label>
@@ -370,6 +374,7 @@
           </div>
           <div class="ende-buttons">
             <button id="btn-neue-uebung" class="btn-primary">Neue Übung starten</button>
+            <button id="btn-nachgeschaut-ueben" class="btn-text hidden">↺ Nachgeschaut üben</button>
             <button id="btn-ende-auswahl" class="btn-text">Andere Gruppen auswählen</button>
           </div>
         </div>
@@ -485,6 +490,6 @@
   </nav>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js?v=26"></script>
+  <script src="app.js?v=27"></script>
 </body>
 </html>
