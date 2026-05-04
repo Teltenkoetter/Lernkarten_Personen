@@ -342,33 +342,62 @@ function renderVorderseiteHtml(text) {
   return `<ul class="lern-vorderseite-liste">${zeilen.map(z => `<li>${esc(z)}</li>`).join('')}</ul>`;
 }
 
-function openKarteDetailOverlay(id) {
-  const s = studenten.find(x => x.id === id);
-  if (!s) return;
-  const isText = s.modus === 'text';
-  const overlay   = document.getElementById('karte-detail-overlay');
-  const fotoWrap  = document.getElementById('karte-detail-foto-wrap');
-  const textWrap  = document.getElementById('karte-detail-text-wrap');
-  const fotoImg   = document.getElementById('karte-detail-foto');
-  const textEl    = document.getElementById('karte-detail-text');
-  const nameEl    = document.getElementById('karte-detail-name');
-  const gruppeEl  = document.getElementById('karte-detail-gruppe');
-  const notizEl   = document.getElementById('karte-detail-notiz');
+// ── Karte Detail Overlay ──────────────────────────────
+let detailIds   = [];   // sichtbare Karten-IDs in aktueller Reihenfolge
+let detailIndex = 0;    // aktuelle Position
 
-  if (isText) {
-    fotoWrap.classList.add('hidden');
-    textEl.innerHTML = renderVorderseiteHtml(s.vorderseite || '');
-    textWrap.classList.remove('hidden');
-  } else {
-    textWrap.classList.add('hidden');
-    fotoImg.src = getFotoUrl(s);
-    fotoWrap.classList.remove('hidden');
-  }
-  nameEl.textContent   = s.name;
-  gruppeEl.textContent = gruppen.find(g => g.id === s.gruppeId)?.name || '';
+function fillKarteDetail(s) {
+  const isText = s.modus === 'text';
+  const fotoWrap = document.getElementById('karte-detail-foto-wrap');
+  const textWrap = document.getElementById('karte-detail-text-wrap');
+  document.getElementById('karte-detail-foto').src = isText ? '' : getFotoUrl(s);
+  document.getElementById('karte-detail-text').innerHTML = isText ? renderVorderseiteHtml(s.vorderseite || '') : '';
+  fotoWrap.classList.toggle('hidden', isText);
+  textWrap.classList.toggle('hidden', !isText);
+  document.getElementById('karte-detail-name').textContent   = s.name;
+  document.getElementById('karte-detail-gruppe').textContent = gruppen.find(g => g.id === s.gruppeId)?.name || '';
+  const notizEl = document.getElementById('karte-detail-notiz');
   if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
   else { notizEl.classList.add('hidden'); }
+  // Zähler aktualisieren
+  document.getElementById('karte-detail-counter').textContent =
+    detailIds.length > 1 ? `${detailIndex + 1} / ${detailIds.length}` : '';
+}
+
+function openKarteDetailOverlay(id) {
+  // Reihenfolge aus aktuell sichtbaren Karten-Items aufbauen
+  detailIds = [...document.querySelectorAll('.karte-detail-trigger.karte-name')].map(el => el.dataset.id);
+  if (!detailIds.length) detailIds = [id];
+  detailIndex = detailIds.indexOf(id);
+  if (detailIndex < 0) { detailIds = [id]; detailIndex = 0; }
+
+  const s = studenten.find(x => x.id === detailIds[detailIndex]);
+  if (!s) return;
+  fillKarteDetail(s);
+
+  const overlay = document.getElementById('karte-detail-overlay');
   overlay.classList.remove('hidden');
+
+  // Swipe-Hinweis: nur anzeigen wenn mehrere Karten & noch nie gesehen
+  const hint = document.getElementById('karte-detail-swipe-hint');
+  if (detailIds.length > 1 && !localStorage.getItem('swipeHintSeen')) {
+    hint.classList.remove('hidden');
+    setTimeout(() => {
+      hint.classList.add('fade-out');
+      setTimeout(() => { hint.classList.add('hidden'); hint.classList.remove('fade-out'); }, 500);
+    }, 2000);
+    localStorage.setItem('swipeHintSeen', '1');
+  } else {
+    hint.classList.add('hidden');
+  }
+}
+
+function detailNavigate(dir) {
+  const next = detailIndex + dir;
+  if (next < 0 || next >= detailIds.length) return;
+  detailIndex = next;
+  const s = studenten.find(x => x.id === detailIds[detailIndex]);
+  if (s) fillKarteDetail(s);
 }
 
 function karteItemHtml(s) {
@@ -1375,10 +1404,38 @@ document.getElementById('karten-nach-gruppen').addEventListener('click', e => {
   }
 });
 
-// Overlay schließen per Tap
-document.getElementById('karte-detail-overlay').addEventListener('click', () => {
-  document.getElementById('karte-detail-overlay').classList.add('hidden');
-});
+// Overlay: Swipe + Tap-zum-Schließen
+(function() {
+  const overlay = document.getElementById('karte-detail-overlay');
+  let touchStartX = 0, touchStartY = 0, touchMoved = false;
+
+  overlay.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchMoved  = false;
+  }, { passive: true });
+
+  overlay.addEventListener('touchmove', e => {
+    touchMoved = Math.abs(e.touches[0].clientX - touchStartX) > 8;
+  }, { passive: true });
+
+  overlay.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      // Horizontaler Swipe
+      detailNavigate(dx < 0 ? 1 : -1);
+    } else if (!touchMoved) {
+      // Reiner Tap → schließen
+      overlay.classList.add('hidden');
+    }
+  }, { passive: true });
+
+  // Maus-Klick zum Schließen (Desktop-Fallback)
+  overlay.addEventListener('click', e => {
+    if (!('ontouchstart' in window)) overlay.classList.add('hidden');
+  });
+})();
 
 document.getElementById('karten-nach-gruppen').addEventListener('click', e => {
   const header = e.target.closest('.gruppe-karten-header');
@@ -1850,8 +1907,39 @@ async function erstelleTutorialGruppeWennNeu() {
       svg: `<svg viewBox="0 0 360 480" xmlns="http://www.w3.org/2000/svg"><rect width="360" height="480" fill="#111"/><rect x="100" y="70" width="160" height="110" rx="14" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1.5"/><rect x="115" y="82" width="60" height="86" rx="6" fill="#252525"/><circle cx="145" cy="108" r="14" fill="#333"/><rect x="186" y="82" width="60" height="86" rx="6" fill="#333"/><text x="216" y="118" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="9" fill="#888">Begriff</text><line x1="192" y1="127" x2="240" y2="127" stroke="#444" stroke-width="1.5" stroke-linecap="round"/><line x1="192" y1="138" x2="230" y2="138" stroke="#333" stroke-width="1" stroke-linecap="round"/><path d="M180 125 Q180 115 172 112" fill="none" stroke="#4a4a4a" stroke-width="2" stroke-linecap="round"/><text x="180" y="204" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#555">↻ dreht sich um</text><line x1="30" y1="220" x2="330" y2="220" stroke="#1e1e1e" stroke-width="1"/><text x="180" y="246" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="12" font-weight="700" fill="#f0f0f0">So lernst du:</text><text x="50" y="272" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">①</text><text x="68" y="272" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Karte antippen → dreht sich um → ✓</text><text x="50" y="294" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">②</text><text x="68" y="294" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">„Begriff zeigen" → Flip → ✗ nachgeschaut</text><text x="50" y="316" font-family="-apple-system,sans-serif" font-size="11" fill="#666">③</text><text x="68" y="316" font-family="-apple-system,sans-serif" font-size="11" fill="#666">✓ oder ✗ antippen → Wertung korrigieren</text><text x="50" y="338" font-family="-apple-system,sans-serif" font-size="11" fill="#555">④</text><text x="68" y="338" font-family="-apple-system,sans-serif" font-size="11" fill="#555">← → Pfeile = Blättern ohne Wertung</text><text x="180" y="374" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#444">Nochmal tippen = nächste Karte</text></svg>`
     },
     {
-      id: 'tut-3', name: 'Gruppen & Karten',
-      svg: `<svg viewBox="0 0 360 480" xmlns="http://www.w3.org/2000/svg"><rect width="360" height="480" fill="#111"/><rect x="80" y="90" width="200" height="140" rx="10" fill="#2a2a2a"/><rect x="80" y="75" width="90" height="25" rx="6" fill="#2a2a2a"/><rect x="100" y="110" width="75" height="95" rx="6" fill="#1a1a1a" stroke="#333" stroke-width="1"/><rect x="185" y="110" width="75" height="95" rx="6" fill="#1a1a1a" stroke="#333" stroke-width="1"/><circle cx="137" cy="138" r="14" fill="#333"/><rect x="117" y="155" width="40" height="30" rx="5" fill="#333"/><text x="222" y="148" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="9" fill="#666">Def.</text><rect x="202" y="155" width="40" height="20" rx="3" fill="#2a2a2a"/><rect x="202" y="178" width="40" height="8" rx="2" fill="#222"/><circle cx="260" cy="215" r="20" fill="#fff"/><text x="260" y="222" text-anchor="middle" font-size="24" fill="#000" font-weight="900">+</text><line x1="30" y1="255" x2="330" y2="255" stroke="#222" stroke-width="1"/><text x="180" y="283" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="12" font-weight="700" fill="#f0f0f0">Eigene Gruppen anlegen:</text><text x="180" y="308" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">VERWALTUNG → Gruppe anlegen</text><text x="180" y="328" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">→ 📷 Foto-Karte oder 📝 Text-Karte</text><text x="180" y="356" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">Notiz ergänzt den Begriff beim</text><text x="180" y="374" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">Aufdecken als Zusatzinfo.</text><text x="180" y="400" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#555">Gruppen per ▲▼ sortieren.</text></svg>`
+      id: 'tut-3', name: 'Sammlungen · Gruppen · Karten',
+      svg: `<svg viewBox="0 0 360 480" xmlns="http://www.w3.org/2000/svg"><rect width="360" height="480" fill="#111"/>
+        <!-- Ebene 1: Sammlung -->
+        <rect x="40" y="55" width="280" height="32" rx="8" fill="#1e1e28" stroke="#333" stroke-width="1"/>
+        <text x="58" y="76" font-family="-apple-system,sans-serif" font-size="11" fill="#888">📂 Hochschule</text>
+        <!-- Ebene 2: Gruppen -->
+        <rect x="60" y="102" width="120" height="28" rx="6" fill="#252530" stroke="#333" stroke-width="1"/>
+        <text x="74" y="120" font-family="-apple-system,sans-serif" font-size="10" fill="#999">Biologie Kap. 3</text>
+        <rect x="195" y="102" width="105" height="28" rx="6" fill="#252530" stroke="#333" stroke-width="1"/>
+        <text x="209" y="120" font-family="-apple-system,sans-serif" font-size="10" fill="#999">Anatomie</text>
+        <!-- Verbindungslinien -->
+        <line x1="180" y1="87" x2="120" y2="102" stroke="#333" stroke-width="1"/>
+        <line x1="180" y1="87" x2="247" y2="102" stroke="#333" stroke-width="1"/>
+        <!-- Ebene 3: Karten -->
+        <rect x="60" y="146" width="52" height="66" rx="6" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1"/>
+        <circle cx="86" cy="166" r="12" fill="#333"/>
+        <rect x="68" y="182" width="36" height="22" rx="3" fill="#2a2a2a"/>
+        <rect x="122" y="146" width="52" height="66" rx="6" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1"/>
+        <circle cx="148" cy="166" r="12" fill="#333"/>
+        <rect x="130" y="182" width="36" height="22" rx="3" fill="#2a2a2a"/>
+        <!-- Pfeil 📁 -->
+        <text x="245" y="175" font-family="-apple-system,sans-serif" font-size="22" fill="#555">📁</text>
+        <text x="242" y="198" font-family="-apple-system,sans-serif" font-size="9" fill="#444">verschieben</text>
+        <line x1="30" y1="232" x2="330" y2="232" stroke="#222" stroke-width="1"/>
+        <text x="180" y="258" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="12" font-weight="700" fill="#f0f0f0">3 Ebenen:</text>
+        <text x="180" y="280" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Sammlung → Gruppe → Karte</text>
+        <text x="180" y="306" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">VERWALTUNG → Sammlung anlegen</text>
+        <text x="180" y="324" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">→ Gruppe → 📷 Foto oder 📖 Text</text>
+        <text x="180" y="352" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">📁 verschiebt eine Gruppe in</text>
+        <text x="180" y="370" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">eine andere Sammlung.</text>
+        <text x="180" y="396" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#555">Im Lernen: Sammlungen auf-/</text>
+        <text x="180" y="414" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#555">zuklappen per Antippen.</text>
+      </svg>`
     },
     {
       id: 'tut-4', name: 'App installieren & offline nutzen',
@@ -1863,7 +1951,7 @@ async function erstelleTutorialGruppeWennNeu() {
     },
     {
       id: 'tut-6', name: 'Jetzt loslegen! 🎉',
-      svg: `<svg viewBox="0 0 360 480" xmlns="http://www.w3.org/2000/svg"><rect width="360" height="480" fill="#111"/><circle cx="180" cy="160" r="80" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="2"/><circle cx="180" cy="160" r="65" fill="#161616"/><polyline points="145,160 168,185 218,132" fill="none" stroke="#4caf50" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="90" cy="90" r="5" fill="#4caf50" opacity="0.5"/><circle cx="270" cy="80" r="4" fill="#cc4444" opacity="0.5"/><circle cx="60" cy="200" r="3" fill="#fff" opacity="0.3"/><circle cx="300" cy="210" r="5" fill="#4caf50" opacity="0.4"/><circle cx="110" cy="240" r="4" fill="#cc4444" opacity="0.3"/><line x1="30" y1="265" x2="330" y2="265" stroke="#222" stroke-width="1"/><text x="180" y="293" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="13" font-weight="700" fill="#f0f0f0">Bereit! 🎉</text><text x="180" y="318" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Tutorial-Gruppe löschen unter</text><text x="180" y="336" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">VERWALTUNG → eigene anlegen.</text><text x="180" y="362" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">Backups regelmäßig erstellen</text><text x="180" y="380" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">unter SICHERUNG!</text><text x="180" y="410" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#444">Daten bleiben lokal im Browser.</text></svg>`
+      svg: `<svg viewBox="0 0 360 480" xmlns="http://www.w3.org/2000/svg"><rect width="360" height="480" fill="#111"/><circle cx="180" cy="150" r="80" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="2"/><circle cx="180" cy="150" r="65" fill="#161616"/><polyline points="145,150 168,175 218,122" fill="none" stroke="#4caf50" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="90" cy="80" r="5" fill="#4caf50" opacity="0.5"/><circle cx="270" cy="70" r="4" fill="#cc4444" opacity="0.5"/><circle cx="60" cy="190" r="3" fill="#fff" opacity="0.3"/><circle cx="300" cy="200" r="5" fill="#4caf50" opacity="0.4"/><line x1="30" y1="252" x2="330" y2="252" stroke="#222" stroke-width="1"/><text x="180" y="278" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="13" font-weight="700" fill="#f0f0f0">Bereit! 🎉</text><text x="180" y="302" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Tutorial löschen: VERWALTUNG →</text><text x="180" y="320" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Sammlung 🎓 Tutorial → ✕</text><text x="180" y="346" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">Karten-Namen antippen →</text><text x="180" y="364" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">Großansicht + links/rechts wischen</text><text x="180" y="390" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#555">Backups unter SICHERUNG!</text><text x="180" y="416" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#444">Daten bleiben lokal im Browser.</text></svg>`
     }
   ];
 

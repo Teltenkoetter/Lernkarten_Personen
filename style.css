@@ -929,12 +929,24 @@ textarea.input-vorderseite::placeholder { color: var(--muted); }
   font-size: 0.7rem; font-weight: 700; color: var(--muted);
   text-transform: uppercase; letter-spacing: 0.6px;
 }
+.karte-detail-counter {
+  font-size: 0.7rem; color: var(--muted); font-weight: 600;
+  letter-spacing: 0.5px;
+}
 .karte-detail-notiz {
   font-size: 0.82rem; color: var(--muted); line-height: 1.5;
   padding-top: 0.4rem;
   border-top: 1px solid var(--border);
   width: 100%;
 }
+.karte-detail-swipe-hint {
+  position: absolute; bottom: calc(2rem + env(safe-area-inset-bottom));
+  left: 50%; transform: translateX(-50%);
+  font-size: 0.8rem; color: rgba(255,255,255,0.45);
+  letter-spacing: 0.5px; pointer-events: none;
+  transition: opacity 0.5s;
+}
+.karte-detail-swipe-hint.fade-out { opacity: 0; }
 
 /* ── TOAST ─────────────────────────────────────────── */
 .toast {
