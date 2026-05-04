@@ -972,6 +972,19 @@ function starteSession(karten, shuffle = true) {
   document.getElementById('lernen-ende').classList.add('hidden');
   document.getElementById('lernen-flashcard').classList.remove('hidden');
   zeigeKarte();
+
+  // Swipe-Hint einmalig anzeigen
+  const hint = document.getElementById('lern-swipe-hint');
+  if (!localStorage.getItem('swipeLearnHintSeen')) {
+    hint.classList.remove('hidden');
+    setTimeout(() => {
+      hint.classList.add('fade-out');
+      setTimeout(() => { hint.classList.add('hidden'); hint.classList.remove('fade-out'); }, 500);
+    }, 2500);
+    localStorage.setItem('swipeLearnHintSeen', '1');
+  } else {
+    hint.classList.add('hidden');
+  }
 }
 
 // ============================================================
@@ -1583,7 +1596,41 @@ document.getElementById('btn-lernen-start').addEventListener('click', () => {
 });
 
 // Karte antippen: 1. Klick = 3D-Flip + ✓ (gewusst), 2. Klick = Fly-out + weiter
-document.getElementById('lernkarte').addEventListener('click', () => {
+// Swipe-Navigation auf der Lernkarte (vor/zurück wie Pfeile)
+(function() {
+  const card = document.getElementById('lernkarte');
+  let tx = 0, ty = 0, swiped = false;
+
+  card.addEventListener('touchstart', e => {
+    tx = e.touches[0].clientX;
+    ty = e.touches[0].clientY;
+    swiped = false;
+  }, { passive: true });
+
+  card.addEventListener('touchmove', e => {
+    if (swiped || isAnimating) return;
+    const dx = e.touches[0].clientX - tx;
+    const dy = e.touches[0].clientY - ty;
+    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      card.style.transition = 'none';
+      card.style.transform  = `translateX(${dx * 0.3}px) rotate(${dx * 0.02}deg)`;
+    }
+  }, { passive: true });
+
+  card.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    const dy = e.changedTouches[0].clientY - ty;
+    card.style.transition = '';
+    card.style.transform  = '';
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && !isAnimating) {
+      swiped = true;
+      if (dx < 0 && lernIndex < lernKarten.length - 1) { lernIndex++; zeigeKarte(); }
+      else if (dx > 0 && lernIndex > 0)                { lernIndex--; zeigeKarte(); }
+    }
+  }, { passive: true });
+})();
+
+document.getElementById('lernkarte').addEventListener('click', e => {
   if (!nameVisible) {
     triggerFlip('gewusst');
   } else if (!isAnimating) {
@@ -1903,8 +1950,31 @@ async function erstelleTutorialGruppeWennNeu() {
       svg: `<svg viewBox="0 0 360 480" xmlns="http://www.w3.org/2000/svg"><rect width="360" height="480" fill="#111"/><circle cx="130" cy="130" r="38" fill="#2a2a2a"/><path d="M72 230 Q72 185 130 185 Q188 185 188 230 L188 255 Q188 265 178 265 L82 265 Q72 265 72 255 Z" fill="#2a2a2a"/><circle cx="230" cy="120" r="32" fill="#383838"/><path d="M178 215 Q178 175 230 175 Q282 175 282 215 L282 240 Q282 248 274 248 L186 248 Q178 248 178 240 Z" fill="#383838"/><text x="180" y="310" text-anchor="middle" font-size="36" fill="#555">👋</text><line x1="30" y1="340" x2="330" y2="340" stroke="#222" stroke-width="1"/><text x="180" y="372" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="13" font-weight="700" fill="#f0f0f0">Willkommen!</text><text x="180" y="394" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Diese App hilft dir, Bilder</text><text x="180" y="412" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">und Begriffe zu lernen.</text><text x="180" y="438" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">Tippe auf das Bild → Begriff</text><text x="180" y="456" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">erscheint. Los geht's! →</text></svg>`
     },
     {
-      id: 'tut-2', name: 'Tippen · Werten · Weiter',
-      svg: `<svg viewBox="0 0 360 480" xmlns="http://www.w3.org/2000/svg"><rect width="360" height="480" fill="#111"/><rect x="100" y="70" width="160" height="110" rx="14" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1.5"/><rect x="115" y="82" width="60" height="86" rx="6" fill="#252525"/><circle cx="145" cy="108" r="14" fill="#333"/><rect x="186" y="82" width="60" height="86" rx="6" fill="#333"/><text x="216" y="118" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="9" fill="#888">Begriff</text><line x1="192" y1="127" x2="240" y2="127" stroke="#444" stroke-width="1.5" stroke-linecap="round"/><line x1="192" y1="138" x2="230" y2="138" stroke="#333" stroke-width="1" stroke-linecap="round"/><path d="M180 125 Q180 115 172 112" fill="none" stroke="#4a4a4a" stroke-width="2" stroke-linecap="round"/><text x="180" y="204" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#555">↻ dreht sich um</text><line x1="30" y1="220" x2="330" y2="220" stroke="#1e1e1e" stroke-width="1"/><text x="180" y="246" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="12" font-weight="700" fill="#f0f0f0">So lernst du:</text><text x="50" y="272" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">①</text><text x="68" y="272" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Karte antippen → dreht sich um → ✓</text><text x="50" y="294" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">②</text><text x="68" y="294" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">„Begriff zeigen" → Flip → ✗ nachgeschaut</text><text x="50" y="316" font-family="-apple-system,sans-serif" font-size="11" fill="#666">③</text><text x="68" y="316" font-family="-apple-system,sans-serif" font-size="11" fill="#666">✓ oder ✗ antippen → Wertung korrigieren</text><text x="50" y="338" font-family="-apple-system,sans-serif" font-size="11" fill="#555">④</text><text x="68" y="338" font-family="-apple-system,sans-serif" font-size="11" fill="#555">← → Pfeile = Blättern ohne Wertung</text><text x="180" y="374" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#444">Nochmal tippen = nächste Karte</text></svg>`
+      id: 'tut-2', name: 'Tippen · Werten · Wischen',
+      svg: `<svg viewBox="0 0 360 480" xmlns="http://www.w3.org/2000/svg"><rect width="360" height="480" fill="#111"/>
+        <rect x="100" y="55" width="160" height="110" rx="14" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1.5"/>
+        <rect x="115" y="67" width="60" height="86" rx="6" fill="#252525"/>
+        <circle cx="145" cy="93" r="14" fill="#333"/>
+        <rect x="186" y="67" width="60" height="86" rx="6" fill="#333"/>
+        <text x="216" y="103" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="9" fill="#888">Begriff</text>
+        <line x1="192" y1="112" x2="240" y2="112" stroke="#444" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="192" y1="123" x2="230" y2="123" stroke="#333" stroke-width="1" stroke-linecap="round"/>
+        <path d="M180 110 Q180 100 172 97" fill="none" stroke="#4a4a4a" stroke-width="2" stroke-linecap="round"/>
+        <text x="180" y="188" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#555">↻ dreht sich um</text>
+        <line x1="30" y1="204" x2="330" y2="204" stroke="#1e1e1e" stroke-width="1"/>
+        <text x="180" y="228" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="12" font-weight="700" fill="#f0f0f0">So lernst du:</text>
+        <text x="50" y="252" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">①</text>
+        <text x="68" y="252" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Karte antippen → dreht sich um → ✓</text>
+        <text x="50" y="274" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">②</text>
+        <text x="68" y="274" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">„Begriff zeigen" → Flip → ✗ nachgeschaut</text>
+        <text x="50" y="296" font-family="-apple-system,sans-serif" font-size="11" fill="#666">③</text>
+        <text x="68" y="296" font-family="-apple-system,sans-serif" font-size="11" fill="#666">✓ oder ✗ antippen → Wertung korrigieren</text>
+        <text x="50" y="318" font-family="-apple-system,sans-serif" font-size="11" fill="#666">④</text>
+        <text x="68" y="318" font-family="-apple-system,sans-serif" font-size="11" fill="#666">← → Pfeile oder Wischen = vor/zurück</text>
+        <text x="50" y="340" font-family="-apple-system,sans-serif" font-size="11" fill="#555">⑤</text>
+        <text x="68" y="340" font-family="-apple-system,sans-serif" font-size="11" fill="#555">↺ Nachgeschaut üben nach der Runde</text>
+        <text x="180" y="372" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#444">Nochmal tippen = nächste Karte</text>
+      </svg>`
     },
     {
       id: 'tut-3', name: 'Sammlungen · Gruppen · Karten',
