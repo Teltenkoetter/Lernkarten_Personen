@@ -294,7 +294,11 @@ function getGefilterteStudenten() {
   const suche = (document.getElementById('input-karten-suche')?.value || '').toLowerCase().trim();
   const sort  = document.getElementById('select-karten-sort')?.value || 'neu';
   let result = [...studenten];
-  if (suche) result = result.filter(s => s.name.toLowerCase().includes(suche));
+  if (suche) result = result.filter(s =>
+    s.name.toLowerCase().includes(suche) ||
+    (s.notiz || '').toLowerCase().includes(suche) ||
+    (s.vorderseite || '').toLowerCase().includes(suche)
+  );
   switch (sort) {
     case 'az': result.sort((a, b) => a.name.localeCompare(b.name, 'de')); break;
     case 'za': result.sort((a, b) => b.name.localeCompare(a.name, 'de')); break;
