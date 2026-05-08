@@ -86,6 +86,7 @@ let sammlungen = [];
 
 const urlCache = new Map();
 function getFotoUrl(s) {
+  if (!s.foto) return '';
   if (!urlCache.has(s.id)) urlCache.set(s.id, URL.createObjectURL(s.foto));
   return urlCache.get(s.id);
 }
@@ -354,7 +355,7 @@ function fillKarteDetail(s) {
   const isText = s.modus === 'text';
   const fotoWrap = document.getElementById('karte-detail-foto-wrap');
   const textWrap = document.getElementById('karte-detail-text-wrap');
-  document.getElementById('karte-detail-foto').src = isText ? '' : getFotoUrl(s);
+  document.getElementById('karte-detail-foto').src = (isText || !s.foto) ? '' : getFotoUrl(s);
   document.getElementById('karte-detail-text').innerHTML = isText ? renderVorderseiteHtml(s.vorderseite || '') : '';
   fotoWrap.classList.toggle('hidden', isText);
   textWrap.classList.toggle('hidden', !isText);
@@ -435,11 +436,17 @@ function detailNavigate(dir) {
 
 function karteItemHtml(s) {
   const isText = s.modus === 'text';
-  const thumb = isText
-    ? `<div class="karte-text-thumb karte-detail-trigger" data-id="${s.id}">${esc((s.vorderseite || '').substring(0, 40))}${(s.vorderseite || '').length > 40 ? '…' : ''}</div>`
-    : `<img src="${getFotoUrl(s)}" alt="${esc(s.name)}" loading="lazy">
+  let thumb;
+  if (isText) {
+    thumb = `<div class="karte-text-thumb karte-detail-trigger" data-id="${s.id}">${esc((s.vorderseite || '').substring(0, 40))}${(s.vorderseite || '').length > 40 ? '…' : ''}</div>`;
+  } else if (s.foto) {
+    thumb = `<img src="${getFotoUrl(s)}" alt="${esc(s.name)}" loading="lazy">
        <div class="karte-foto-overlay">📷</div>
        <input type="file" accept="image/*" class="karte-foto-input" data-id="${s.id}">`;
+  } else {
+    thumb = `<div class="karte-foto-leer karte-detail-trigger" data-id="${s.id}" title="Foto fehlt noch">📷</div>
+       <input type="file" accept="image/*" class="karte-foto-input" data-id="${s.id}">`;
+  }
   return `
     <div class="karte-item">
       <div class="karte-foto-wrapper">
