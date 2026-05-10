@@ -108,10 +108,11 @@ const gewusstIds      = new Set();
 const nichtGewusstIds = new Set();
 
 // ── AUTO-TIMER & AUTOREPEAT ──────────────────────────────────
-let timerSekunden = parseInt(localStorage.getItem('lernTimer') || '0');
-let timerHandle   = null;
-const TIMER_BACK  = { 1: 1500, 3: 2000, 5: 3000, 10: 5000 };
-let autoRepeat    = localStorage.getItem('lernAutoRepeat') === '1';
+let timerSekunden  = parseInt(localStorage.getItem('lernTimer') || '0');
+let timerHandle    = null;
+let timerGeneration = 0;   // verhindert veraltete transitionend-Callbacks
+const TIMER_BACK   = { 1: 1500, 3: 2000, 5: 3000, 10: 5000 };
+let autoRepeat     = localStorage.getItem('lernAutoRepeat') === '1';
 
 function setAutoRepeat(val) {
   autoRepeat = val;
@@ -150,24 +151,44 @@ function timerBarStop() {
 }
 
 function stoppeAutoTimer() {
+  timerGeneration++;  // invalidiert alle laufenden Callbacks sofort
   if (timerHandle) { clearTimeout(timerHandle); timerHandle = null; }
   timerBarStop();
+}
+
+function starteCountdown(callback) {
+  const el = document.getElementById('lern-countdown');
+  if (!el) { callback(); return; }
+  let count = 3;
+  el.textContent = count;
+  el.classList.remove('hidden');
+  const iv = setInterval(() => {
+    count--;
+    if (count > 0) {
+      el.textContent = count;
+    } else {
+      clearInterval(iv);
+      el.classList.add('hidden');
+      callback();
+    }
+  }, 1000);
 }
 
 function starteAutoTimer() {
   stoppeAutoTimer();
   if (!timerSekunden || !lernKarten.length) return;
-  const ms = timerSekunden * 1000;
+  const ms  = timerSekunden * 1000;
+  const gen = timerGeneration;  // aktuelle Generation merken
   timerBarStart(ms);
-  timerHandle = setTimeout(timerAutoFlip, ms);
+  timerHandle = setTimeout(() => { if (timerGeneration === gen) timerAutoFlip(gen); }, ms);
 }
 
-function timerAutoFlip() {
+function timerAutoFlip(gen) {
+  if (timerGeneration !== gen) return;  // veraltet → abbrechen
   timerHandle = null;
   const backMs = TIMER_BACK[timerSekunden] || 2000;
 
   if (!nameVisible && !isAnimating) {
-    // Flip-Animation, danach erst Rückseiten-Timer starten
     isAnimating = true;
     const card = document.getElementById('lernkarte');
     card.style.transition = 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
@@ -178,15 +199,15 @@ function timerAutoFlip() {
       card.style.transform = 'perspective(1600px) rotateY(0deg)';
       setTimeout(() => {
         isAnimating = false;
-        // Rückseiten-Timer erst JETZT starten (Karte vollständig sichtbar)
+        if (timerGeneration !== gen) return;  // wurde zwischenzeitlich gestoppt
         timerBarStart(backMs);
-        timerHandle = setTimeout(timerAutoWeiter, backMs);
+        timerHandle = setTimeout(() => { if (timerGeneration === gen) timerAutoWeiter(); }, backMs);
       }, 320);
     }, { once: true });
   } else {
-    // Bereits aufgedeckt – Rückseiten-Timer sofort starten
+    // Bereits aufgedeckt – Rückseiten-Timer sofort
     timerBarStart(backMs);
-    timerHandle = setTimeout(timerAutoWeiter, backMs);
+    timerHandle = setTimeout(() => { if (timerGeneration === gen) timerAutoWeiter(); }, backMs);
   }
 }
 
@@ -1136,7 +1157,12 @@ function starteSession(karten, shuffle = true) {
   document.querySelectorAll('.timer-btn-repeat').forEach(b =>
     b.classList.toggle('active', autoRepeat)
   );
-  zeigeKarte(); // ruft intern starteAutoTimer()
+  if (timerSekunden) {
+    // Countdown 3-2-1 vor dem ersten Timer-Start
+    starteCountdown(() => zeigeKarte());
+  } else {
+    zeigeKarte();
+  }
 
   // Swipe-Hint einmalig anzeigen
   const hint = document.getElementById('lern-swipe-hint');
@@ -2365,3 +2391,15 @@ async function erstelleTutorialGruppeWennNeu() {
     b.classList.toggle('active', autoRepeat)
   );
 })();
+
+// ── Safari: Timer bei Tab-Wechsel sauber pausieren/neustarten ──
+document.addEventListener('visibilitychange', () => {
+  const sessionAktiv = !document.getElementById('lernen-flashcard').classList.contains('hidden');
+  if (!sessionAktiv || !timerSekunden) return;
+  if (document.hidden) {
+    stoppeAutoTimer();
+  } else {
+    // Nur neustarten wenn Vorderseite noch sichtbar (noch nicht aufgedeckt)
+    if (!nameVisible) starteAutoTimer();
+  }
+});
