@@ -110,7 +110,7 @@ const nichtGewusstIds = new Set();
 // ── AUTO-TIMER & AUTOREPEAT ──────────────────────────────────
 let timerSekunden = parseInt(localStorage.getItem('lernTimer') || '0');
 let timerHandle   = null;
-const TIMER_BACK  = { 1: 1000, 3: 1000, 5: 2000, 10: 3000 };
+const TIMER_BACK  = { 1: 1500, 3: 2000, 5: 3000, 10: 5000 };
 let autoRepeat    = localStorage.getItem('lernAutoRepeat') === '1';
 
 function setAutoRepeat(val) {
@@ -164,8 +164,10 @@ function starteAutoTimer() {
 
 function timerAutoFlip() {
   timerHandle = null;
-  // Rückseite zeigen (automatisch, ohne Wertung)
+  const backMs = TIMER_BACK[timerSekunden] || 2000;
+
   if (!nameVisible && !isAnimating) {
+    // Flip-Animation, danach erst Rückseiten-Timer starten
     isAnimating = true;
     const card = document.getElementById('lernkarte');
     card.style.transition = 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
@@ -174,13 +176,18 @@ function timerAutoFlip() {
       card.removeEventListener('transitionend', handler);
       zeigeNameAuto();
       card.style.transform = 'perspective(1600px) rotateY(0deg)';
-      setTimeout(() => { isAnimating = false; }, 320);
+      setTimeout(() => {
+        isAnimating = false;
+        // Rückseiten-Timer erst JETZT starten (Karte vollständig sichtbar)
+        timerBarStart(backMs);
+        timerHandle = setTimeout(timerAutoWeiter, backMs);
+      }, 320);
     }, { once: true });
+  } else {
+    // Bereits aufgedeckt – Rückseiten-Timer sofort starten
+    timerBarStart(backMs);
+    timerHandle = setTimeout(timerAutoWeiter, backMs);
   }
-  // Rückseiten-Timer starten
-  const backMs = TIMER_BACK[timerSekunden] || 2000;
-  timerBarStart(backMs);
-  timerHandle = setTimeout(timerAutoWeiter, backMs);
 }
 
 function timerAutoWeiter() {

@@ -565,42 +565,45 @@ textarea.input-vorderseite::placeholder { color: var(--muted); }
 
 /* ── LERNEN – AUTO-TIMER ───────────────────────────── */
 .lern-timer-row {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 0.45rem; padding: 0.5rem 0 0.25rem;
+  display: flex; flex-direction: row;
+  align-items: center; gap: 0.5rem;
+  padding: 0.4rem 0 0.2rem;
 }
 .lern-timer-label {
-  font-size: 0.72rem; color: var(--muted);
-  font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  font-size: 0.7rem; color: var(--muted);
+  font-weight: 700; white-space: nowrap;
+  flex-shrink: 0; text-align: left;
 }
-.lern-timer-btns { display: flex; gap: 0.35rem; }
+.lern-timer-btns {
+  display: flex; flex: 1; gap: 0.3rem;
+}
 .timer-btn {
+  flex: 1;
   background: rgba(255,255,255,0.04);
   border: 1.5px solid var(--border);
   border-radius: 8px;
   color: var(--muted);
-  font-size: 0.8rem; font-weight: 600;
-  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem; font-weight: 600;
+  padding: 0.4rem 0.2rem;
   cursor: pointer; font-family: inherit;
-  transition: all 0.15s;
+  transition: all 0.15s; text-align: center;
 }
 .timer-btn.active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
 }
+/* Repeat-Button etwas schmaler (nur Icon) */
+.timer-btn-repeat { flex: 0.7; }
 /* Kompakt-Timer im Session-View */
 .session-timer-row {
-  display: flex; justify-content: center;
-  padding: 0.3rem 0 0.2rem; flex-shrink: 0;
+  display: flex; flex-direction: row;
+  align-items: center; gap: 0.5rem;
+  padding: 0.25rem 0 0.15rem; flex-shrink: 0;
 }
+.session-timer-row .lern-timer-btns { flex: 1; }
 .session-timer-row .timer-btn {
-  font-size: 0.72rem; padding: 0.22rem 0.5rem; border-radius: 6px;
-}
-/* Autorepeat-Button – visuell vom Timer abgesetzt */
-.timer-btn-repeat {
-  margin-left: 0.3rem;
-  border-left: 1px solid var(--border);
-  padding-left: 0.75rem !important;
+  font-size: 0.7rem; padding: 0.2rem 0.1rem; border-radius: 6px;
 }
 /* Countdown-Balken */
 .timer-bar-wrap {
