@@ -563,6 +563,56 @@ textarea.input-vorderseite::placeholder { color: var(--muted); }
 .modus-desc  { font-size: 0.7rem; color: var(--muted); line-height: 1.3; }
 .lernmodus-btn.active .modus-desc { color: var(--text-dim); }
 
+/* ── LERNEN – AUTO-TIMER ───────────────────────────── */
+.lern-timer-row {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.45rem; padding: 0.5rem 0 0.25rem;
+}
+.lern-timer-label {
+  font-size: 0.72rem; color: var(--muted);
+  font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.lern-timer-btns { display: flex; gap: 0.35rem; }
+.timer-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.8rem; font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  cursor: pointer; font-family: inherit;
+  transition: all 0.15s;
+}
+.timer-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+/* Kompakt-Timer im Session-View */
+.session-timer-row {
+  display: flex; justify-content: center;
+  padding: 0.3rem 0 0.2rem; flex-shrink: 0;
+}
+.session-timer-row .timer-btn {
+  font-size: 0.72rem; padding: 0.22rem 0.5rem; border-radius: 6px;
+}
+/* Autorepeat-Button – visuell vom Timer abgesetzt */
+.timer-btn-repeat {
+  margin-left: 0.3rem;
+  border-left: 1px solid var(--border);
+  padding-left: 0.75rem !important;
+}
+/* Countdown-Balken */
+.timer-bar-wrap {
+  height: 3px; width: 100%;
+  background: var(--border); border-radius: 2px;
+  overflow: hidden; flex-shrink: 0; margin-bottom: 0.2rem;
+}
+.timer-bar {
+  height: 100%; width: 100%;
+  background: var(--accent); border-radius: 2px;
+}
+
 /* ── LERNEN – FLASHCARD ────────────────────────────── */
 #lernen-flashcard {
   display: flex; flex-direction: column;

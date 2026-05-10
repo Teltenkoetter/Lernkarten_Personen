@@ -334,6 +334,17 @@
               <div class="modus-desc">Lösung → 📷 Foto · 📖 Begriff</div>
             </button>
           </div>
+          <div class="lern-timer-row">
+            <span class="lern-timer-label">⏱ Auto-Timer</span>
+            <div class="lern-timer-btns" id="auswahl-timer-btns">
+              <button class="timer-btn active" data-sek="0">Aus</button>
+              <button class="timer-btn" data-sek="1">1s</button>
+              <button class="timer-btn" data-sek="3">3s</button>
+              <button class="timer-btn" data-sek="5">5s</button>
+              <button class="timer-btn" data-sek="10">10s</button>
+              <button class="timer-btn timer-btn-repeat" id="btn-autorepeat-auswahl">🔁</button>
+            </div>
+          </div>
           <button id="btn-lernen-start" class="btn-primary btn-large" disabled>Lernen starten</button>
         </div>
       </div>
@@ -382,6 +393,19 @@
             <span class="lern-swipe-arrow">→</span>
           </div>
           <div class="lern-swipe-sub">navigiert vor &amp; zurück</div>
+        </div>
+        <div id="timer-bar-wrap" class="timer-bar-wrap hidden">
+          <div id="timer-bar" class="timer-bar"></div>
+        </div>
+        <div class="session-timer-row" id="session-timer-row">
+          <div class="lern-timer-btns">
+            <button class="timer-btn active" data-sek="0">⏸ Aus</button>
+            <button class="timer-btn" data-sek="1">1s</button>
+            <button class="timer-btn" data-sek="3">3s</button>
+            <button class="timer-btn" data-sek="5">5s</button>
+            <button class="timer-btn" data-sek="10">10s</button>
+            <button class="timer-btn timer-btn-repeat" id="btn-autorepeat-session">🔁</button>
+          </div>
         </div>
         <div class="lern-steuerung">
           <button id="btn-zurueck" class="btn-nav">&#8592;</button>
@@ -544,6 +568,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js?v=51"></script>
+  <script src="app.js?v=53"></script>
 </body>
 </html>

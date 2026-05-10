@@ -107,6 +107,123 @@ const answeredIds     = new Set();
 const gewusstIds      = new Set();
 const nichtGewusstIds = new Set();
 
+// ── AUTO-TIMER & AUTOREPEAT ──────────────────────────────────
+let timerSekunden = parseInt(localStorage.getItem('lernTimer') || '0');
+let timerHandle   = null;
+const TIMER_BACK  = { 1: 1000, 3: 1000, 5: 2000, 10: 3000 };
+let autoRepeat    = localStorage.getItem('lernAutoRepeat') === '1';
+
+function setAutoRepeat(val) {
+  autoRepeat = val;
+  localStorage.setItem('lernAutoRepeat', val ? '1' : '0');
+  document.querySelectorAll('.timer-btn-repeat').forEach(b =>
+    b.classList.toggle('active', val)
+  );
+}
+
+function setTimerSekunden(val) {
+  timerSekunden = val;
+  localStorage.setItem('lernTimer', val);
+  document.querySelectorAll('.timer-btn').forEach(b =>
+    b.classList.toggle('active', +b.dataset.sek === val)
+  );
+}
+
+function timerBarStart(ms) {
+  const wrap = document.getElementById('timer-bar-wrap');
+  const bar  = document.getElementById('timer-bar');
+  if (!bar) return;
+  wrap.classList.remove('hidden');
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    bar.style.transition = `width ${ms}ms linear`;
+    bar.style.width = '0%';
+  }));
+}
+
+function timerBarStop() {
+  const wrap = document.getElementById('timer-bar-wrap');
+  const bar  = document.getElementById('timer-bar');
+  if (bar) { bar.style.transition = 'none'; bar.style.width = '0%'; }
+  if (wrap) wrap.classList.add('hidden');
+}
+
+function stoppeAutoTimer() {
+  if (timerHandle) { clearTimeout(timerHandle); timerHandle = null; }
+  timerBarStop();
+}
+
+function starteAutoTimer() {
+  stoppeAutoTimer();
+  if (!timerSekunden || !lernKarten.length) return;
+  const ms = timerSekunden * 1000;
+  timerBarStart(ms);
+  timerHandle = setTimeout(timerAutoFlip, ms);
+}
+
+function timerAutoFlip() {
+  timerHandle = null;
+  // Rückseite zeigen (automatisch, ohne Wertung)
+  if (!nameVisible && !isAnimating) {
+    isAnimating = true;
+    const card = document.getElementById('lernkarte');
+    card.style.transition = 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
+    card.style.transform  = 'perspective(1600px) rotateY(90deg)';
+    card.addEventListener('transitionend', function handler() {
+      card.removeEventListener('transitionend', handler);
+      zeigeNameAuto();
+      card.style.transform = 'perspective(1600px) rotateY(0deg)';
+      setTimeout(() => { isAnimating = false; }, 320);
+    }, { once: true });
+  }
+  // Rückseiten-Timer starten
+  const backMs = TIMER_BACK[timerSekunden] || 2000;
+  timerBarStart(backMs);
+  timerHandle = setTimeout(timerAutoWeiter, backMs);
+}
+
+function timerAutoWeiter() {
+  timerHandle = null;
+  timerBarStop();
+  if (lernIndex < lernKarten.length - 1) {
+    lernIndex++;
+    zeigeKarte(); // startet intern starteAutoTimer()
+  } else {
+    zeigeEnde();
+  }
+}
+
+function zeigeNameAuto() {
+  nameVisible = true;
+  const s = lernKarten[lernIndex];
+  const kartenModus = s.modus || 'foto';
+  if (kartenModus === 'text' && lernModus === 'name') {
+    document.getElementById('lernkarte-text-vorderseite').classList.add('hidden');
+    document.getElementById('lern-name-overlay').classList.remove('hidden');
+    const n = document.getElementById('lern-notiz-text');
+    if (s.notiz) { n.textContent = s.notiz; n.classList.remove('hidden'); } else n.classList.add('hidden');
+  } else if (kartenModus === 'text') {
+    document.getElementById('lern-name-karte').classList.add('hidden');
+    document.getElementById('lern-vorderseite-text').innerHTML = renderVorderseiteHtml(s.vorderseite || '');
+    document.getElementById('lernkarte-text-vorderseite').classList.remove('hidden');
+    const nr = document.getElementById('lern-notiz-text-rueck');
+    if (s.notiz) { nr.textContent = s.notiz; nr.classList.remove('hidden'); } else nr.classList.add('hidden');
+  } else if (lernModus === 'name') {
+    if (s.foto) document.getElementById('lern-foto').src = getFotoUrl(s);
+    document.getElementById('lernkarte-foto-wrapper').classList.remove('hidden');
+    document.getElementById('lern-name-karte').classList.add('hidden');
+    const n = document.getElementById('lern-notiz-text');
+    if (s.notiz) { n.textContent = s.notiz; n.classList.remove('hidden'); } else n.classList.add('hidden');
+  } else {
+    document.getElementById('lern-name-overlay').classList.remove('hidden');
+    const n = document.getElementById('lern-notiz-text');
+    if (s.notiz) { n.textContent = s.notiz; n.classList.remove('hidden'); } else n.classList.add('hidden');
+  }
+  document.getElementById('lern-hint-pill').classList.add('hidden');
+  document.getElementById('btn-aufdecken').style.visibility = 'hidden';
+}
+
 // edit modal
 let editModalMode      = 'edit';
 let editModalStudentId = null;
@@ -238,7 +355,7 @@ function zeigeFeedback(typ) {
 }
 
 // 3D-Flip: Karte faltet zur Kante (90°), Content-Tausch, zurück (0°)
-function triggerFlip(wertung) {
+function triggerFlip(wertung, afterFlip) {
   if (isAnimating || nameVisible) return;
   isAnimating = true;
   const card = document.getElementById('lernkarte');
@@ -248,7 +365,10 @@ function triggerFlip(wertung) {
     card.removeEventListener('transitionend', handler);
     zeigeName(wertung);                                   // Content-Tausch am unsichtbaren Punkt
     card.style.transform = 'perspective(1600px) rotateY(0deg)';
-    setTimeout(() => { isAnimating = false; }, 320);      // Rückseite fertig eingedreht
+    setTimeout(() => {
+      isAnimating = false;
+      if (afterFlip) afterFlip();
+    }, 320);      // Rückseite fertig eingedreht
   }, { once: true });
 }
 
@@ -893,10 +1013,11 @@ function zeigeKarte() {
     aufdeckBtn.textContent = 'Bild zeigen';
   } else {
     // Foto-Karte normal: Bild vorne → Begriff hinten
-    document.getElementById('lern-foto').src = getFotoUrl(s);
-    document.getElementById('lernkarte-foto-wrapper').classList.remove('hidden');
+    if (s.foto) document.getElementById('lern-foto').src = getFotoUrl(s);
+    document.getElementById('lernkarte-foto-wrapper').classList.toggle('hidden', !s.foto);
     aufdeckBtn.textContent = 'Begriff zeigen';
   }
+  starteAutoTimer();
 }
 
 function zeigeName(wertung) {
@@ -968,7 +1089,14 @@ function naechsteKarteOderEnde() {
 }
 
 async function zeigeEnde() {
+  stoppeAutoTimer();
   await speichereSitzung();
+  if (autoRepeat) {
+    const pause = timerSekunden ? 600 : 1800;
+    toast(`🔁 Neue Runde…`);
+    setTimeout(() => starteSession(lernKarten), pause);
+    return;
+  }
   document.getElementById('lernen-flashcard').classList.add('hidden');
   document.getElementById('lernen-ende').classList.remove('hidden');
   const total = lernKarten.length;
@@ -981,6 +1109,7 @@ async function zeigeEnde() {
 }
 
 function starteSession(karten, shuffle = true) {
+  stoppeAutoTimer();
   lernKarten   = shuffle ? mischen([...karten]) : [...karten];
   document.getElementById('btn-mischen').style.visibility = shuffle ? '' : 'hidden';
   lernIndex    = 0;
@@ -993,7 +1122,14 @@ function starteSession(karten, shuffle = true) {
   document.getElementById('lern-progress-fill').style.width = '0%';
   document.getElementById('lernen-ende').classList.add('hidden');
   document.getElementById('lernen-flashcard').classList.remove('hidden');
-  zeigeKarte();
+  // Timer-Buttons & Autorepeat synchronisieren
+  document.querySelectorAll('.timer-btn').forEach(b =>
+    b.classList.toggle('active', +b.dataset.sek === timerSekunden)
+  );
+  document.querySelectorAll('.timer-btn-repeat').forEach(b =>
+    b.classList.toggle('active', autoRepeat)
+  );
+  zeigeKarte(); // ruft intern starteAutoTimer()
 
   // Swipe-Hint einmalig anzeigen
   const hint = document.getElementById('lern-swipe-hint');
@@ -1727,8 +1863,16 @@ document.getElementById('btn-lernen-start').addEventListener('click', () => {
 
 document.getElementById('lernkarte').addEventListener('click', e => {
   if (!nameVisible) {
-    triggerFlip('gewusst');
+    stoppeAutoTimer();
+    triggerFlip('gewusst', () => {
+      if (timerSekunden) {
+        const backMs = TIMER_BACK[timerSekunden] || 2000;
+        timerBarStart(backMs);
+        timerHandle = setTimeout(timerAutoWeiter, backMs);
+      }
+    });
   } else if (!isAnimating) {
+    stoppeAutoTimer();
     naechsteKarteOderEnde();
   }
 });
@@ -1737,15 +1881,24 @@ document.getElementById('lernkarte').addEventListener('click', e => {
 document.getElementById('btn-aufdecken').addEventListener('click', e => {
   e.stopPropagation();
   if (!nameVisible) {
-    triggerFlip('nicht-gewusst');
+    stoppeAutoTimer();
+    triggerFlip('nicht-gewusst', () => {
+      if (timerSekunden) {
+        const backMs = TIMER_BACK[timerSekunden] || 2000;
+        timerBarStart(backMs);
+        timerHandle = setTimeout(timerAutoWeiter, backMs);
+      }
+    });
   }
 });
 
 // Pfeile
 document.getElementById('btn-weiter').addEventListener('click', () => {
+  stoppeAutoTimer();
   if (lernIndex < lernKarten.length - 1) { lernIndex++; zeigeKarte(); }
 });
 document.getElementById('btn-zurueck').addEventListener('click', () => {
+  stoppeAutoTimer();
   if (lernIndex > 0) { lernIndex--; zeigeKarte(); }
 });
 
@@ -1771,6 +1924,7 @@ document.getElementById('lern-feedback').addEventListener('click', e => {
   }
 });
 document.getElementById('btn-beenden').addEventListener('click', () => {
+  stoppeAutoTimer();
   document.getElementById('lernen-flashcard').classList.add('hidden');
   document.getElementById('lernen-auswahl').classList.remove('hidden');
   renderLernAuswahl();
@@ -1778,6 +1932,25 @@ document.getElementById('btn-beenden').addEventListener('click', () => {
 document.getElementById('btn-neue-uebung').addEventListener('click', () => {
   document.getElementById('lernen-ende').classList.add('hidden');
   starteSession(lernKarten);
+});
+
+// Timer-Buttons + Autorepeat (Auswahl + Session) – Event-Delegation
+document.addEventListener('click', e => {
+  // Autorepeat-Toggle
+  if (e.target.closest('.timer-btn-repeat')) {
+    setAutoRepeat(!autoRepeat);
+    return;
+  }
+  // Timer-Wert-Buttons
+  const btn = e.target.closest('.timer-btn');
+  if (!btn || btn.classList.contains('timer-btn-repeat')) return;
+  const val = +btn.dataset.sek;
+  setTimerSekunden(val);
+  // Wenn Session läuft: Timer sofort (neu)starten oder stoppen
+  if (!document.getElementById('lernen-flashcard').classList.contains('hidden')) {
+    if (val) starteAutoTimer();
+    else stoppeAutoTimer();
+  }
 });
 document.getElementById('btn-nachgeschaut-ueben').addEventListener('click', () => {
   const nachKarten = lernKarten.filter(s => nichtGewusstIds.has(s.id));
@@ -2177,4 +2350,11 @@ async function erstelleTutorialGruppeWennNeu() {
   ladeOpenSammlungen();
   ladeOpenLernSammlungen();
   renderVerwaltung();
+  // Timer-Buttons & Autorepeat initialisieren
+  document.querySelectorAll('.timer-btn').forEach(b =>
+    b.classList.toggle('active', +b.dataset.sek === timerSekunden)
+  );
+  document.querySelectorAll('.timer-btn-repeat').forEach(b =>
+    b.classList.toggle('active', autoRepeat)
+  );
 })();
