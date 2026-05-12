@@ -510,23 +510,23 @@ textarea.input-vorderseite::placeholder { color: var(--muted); }
   border: 1px dashed var(--border);
   opacity: 0.5;
 }
-/* ── FAVORITEN-STERN (Thumbnail) ───────────────────── */
+/* ── FAVORITEN-STERN (Karten-Zeile) ────────────────── */
 .btn-favorit {
-  position: absolute;
-  top: 2px; right: 2px;
-  z-index: 5;
   background: none;
   border: none;
-  padding: 1px 2px;
   cursor: pointer;
-  font-size: 0.78rem;
+  padding: 0.25rem 0.2rem;
+  border-radius: 4px;
+  font-size: 0.92rem;
   line-height: 1;
   color: rgba(255,255,255,0.18);
   transition: color 0.15s;
+  flex-shrink: 0;
 }
 .btn-favorit.aktiv {
   color: gold;
 }
+.btn-favorit:active { color: gold; }
 .karte-name { flex: 1; font-weight: 600; font-size: 0.9rem; min-width: 0; }
 .karte-detail-trigger { cursor: zoom-in; }
 .karte-name.karte-detail-trigger:hover { text-decoration: underline; text-underline-offset: 2px; }
@@ -584,7 +584,8 @@ textarea.input-vorderseite::placeholder { color: var(--muted); }
 .lern-timer-row {
   display: flex; flex-direction: row;
   align-items: center; gap: 0.5rem;
-  padding: 0.4rem 0 0.2rem;
+  padding: 0.75rem 0 0.2rem;
+  margin-top: 0.25rem;
 }
 .lern-timer-label {
   font-size: 1.05rem; color: var(--muted);
@@ -612,26 +613,28 @@ textarea.input-vorderseite::placeholder { color: var(--muted); }
   color: #111;
   font-weight: 700;
 }
-/* Repeat-Button: kein Rahmen, nur Icon */
+/* Repeat-Button: kein Rahmen, nur Icon — Größe = ⏱-Label */
 .timer-btn-repeat {
-  flex: 0.7;
+  flex: 0 0 auto;
   font-size: 1.05rem;
   line-height: 1;
   display: flex; align-items: center; justify-content: center;
-  padding-top: 0; padding-bottom: 0;
+  padding: 0.3rem 0.45rem;
   background: none !important;
-  border-color: transparent !important;
+  border: none !important;
+  opacity: 0.3;
+  transition: opacity 0.15s, filter 0.15s;
 }
 .timer-btn-repeat.active {
-  background: none !important;
-  border-color: transparent !important;
-  color: gold;
+  opacity: 1;
+  filter: drop-shadow(0 0 4px rgba(255,215,0,0.8));
 }
 /* Kompakt-Timer im Session-View */
 .session-timer-row {
   display: flex; flex-direction: row;
   align-items: center; gap: 0.5rem;
-  padding: 0.25rem 0 0.15rem; flex-shrink: 0;
+  padding: 0.5rem 0 0.15rem; flex-shrink: 0;
+  margin-top: 0.2rem;
 }
 .session-timer-row .lern-timer-btns { flex: 1; }
 .session-timer-row .timer-btn {

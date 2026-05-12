@@ -600,9 +600,9 @@ function karteItemHtml(s) {
     <div class="karte-item">
       <div class="karte-foto-wrapper">
         ${thumb}
-        <button class="btn-favorit${s.favorit ? ' aktiv' : ''}" data-id="${s.id}" title="${s.favorit ? 'Favorit entfernen' : 'Als Favorit markieren'}">★</button>
       </div>
       <span class="karte-name karte-detail-trigger" data-id="${s.id}">${esc(s.name)}${s.notiz ? ' <span style="opacity:.45;font-size:.7rem">📝</span>' : ''}</span>
+      <button class="btn-favorit${s.favorit ? ' aktiv' : ''}" data-id="${s.id}" title="${s.favorit ? 'Favorit entfernen' : 'Als Favorit markieren'}">★</button>
       <button class="btn-karte-ren"  data-id="${s.id}" title="Bearbeiten">✏️</button>
       <button class="btn-karte-copy" data-id="${s.id}" title="Kopieren">📋</button>
       <button class="btn-karte-del"  data-id="${s.id}" title="Löschen">✕</button>
