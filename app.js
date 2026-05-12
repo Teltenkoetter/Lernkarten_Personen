@@ -52,6 +52,14 @@ function dbGetAll(store) {
   });
 }
 
+function dbGet(store, id) {
+  return new Promise((res, rej) => {
+    const req = db.transaction(store, 'readonly').objectStore(store).get(id);
+    req.onsuccess = () => res(req.result);
+    req.onerror  = () => rej(req.error);
+  });
+}
+
 function dbPut(store, item) {
   return new Promise((res, rej) => {
     const req = db.transaction(store, 'readwrite').objectStore(store).put(item);
@@ -1016,6 +1024,7 @@ function zeigeKarte() {
   document.getElementById('lern-name-text').textContent         = s.name;
   document.getElementById('lern-gruppe-text').textContent       = gName;
   document.getElementById('lern-name-karte-gruppe').textContent = gName;
+  document.getElementById('lern-favorit-stern').classList.toggle('hidden', !s.favorit);
 
   // Fortschrittsbalken + Counter
   const answered = answeredIds.size;
@@ -1520,13 +1529,24 @@ document.getElementById('sammlungen-liste').addEventListener('click', async e =>
   const favBtn = e.target.closest('.btn-favorit');
   if (favBtn) {
     e.stopPropagation();
-    const id = favBtn.dataset.id;
-    const s  = studenten.find(x => x.id === id);
+    const id        = favBtn.dataset.id;
+    const s         = studenten.find(x => x.id === id);
     if (!s) return;
-    s.favorit = !s.favorit;
-    await dbPut('studenten', s);
-    favBtn.classList.toggle('aktiv', s.favorit);
-    favBtn.title = s.favorit ? 'Favorit entfernen' : 'Als Favorit markieren';
+    const newFavorit = !s.favorit;
+    // Frisch aus DB lesen und nur favorit-Feld ändern – schützt Foto-Blob
+    try {
+      const dbRec = await dbGet('studenten', id);
+      if (dbRec) {
+        dbRec.favorit = newFavorit;
+        await dbPut('studenten', dbRec);
+      }
+    } catch (err) {
+      console.warn('Favorit DB-Fehler:', err);
+    }
+    // In-Memory und UI immer aktualisieren (auch bei DB-Fehler)
+    s.favorit = newFavorit;
+    favBtn.classList.toggle('aktiv', newFavorit);
+    favBtn.title = newFavorit ? 'Favorit entfernen' : 'Als Favorit markieren';
     renderLernAuswahl();
     return;
   }
