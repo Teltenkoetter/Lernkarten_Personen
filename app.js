@@ -130,12 +130,19 @@ function setAutoRepeat(val) {
   );
 }
 
+function updateTimerLabelOpacity() {
+  document.querySelectorAll('.lern-timer-label').forEach(el => {
+    el.style.opacity = timerSekunden ? '1' : '0.3';
+  });
+}
+
 function setTimerSekunden(val) {
   timerSekunden = val;
   localStorage.setItem('lernTimer', val);
   document.querySelectorAll('.timer-btn').forEach(b =>
     b.classList.toggle('active', +b.dataset.sek === val)
   );
+  updateTimerLabelOpacity();
 }
 
 function timerBarStart(ms) {
@@ -2084,10 +2091,15 @@ document.getElementById('btn-export').addEventListener('click', () => {
   if (!gruppen.length) { toast('Keine Gruppen vorhanden'); return; }
   const container = document.getElementById('export-gruppen-liste');
 
+  function checkBoxHtml(selected = true) {
+    return selected
+      ? `<div class="check-box" style="background:var(--accent);border-color:var(--accent);color:#000">✓</div>`
+      : `<div class="check-box" style="color:transparent">✓</div>`;
+  }
   function gruppeItemHtml(g) {
     const n = gruppeKartenAnzahl(g.id);
     return `<div class="gruppe-check-item selected" data-gid="${g.id}">
-      <div class="check-box" style="background:var(--accent);border-color:var(--accent);color:#000">✓</div>
+      ${checkBoxHtml(true)}
       <div class="check-label">
         <strong>${esc(g.name)}</strong>
         <span>${n} Karte${n !== 1 ? 'n' : ''}</span>
@@ -2095,8 +2107,21 @@ document.getElementById('btn-export').addEventListener('click', () => {
     </div>`;
   }
 
-  // Nach Sammlungen gegliedert
+  // ⭐ Favoriten-Option ganz oben (nur wenn Favoriten vorhanden)
+  const favAnzahl = studenten.filter(s => s.favorit).length;
   let html = '';
+  if (favAnzahl) {
+    html += `<div class="gruppe-check-item" data-gid="__favoriten__">
+      ${checkBoxHtml(false)}
+      <div class="check-label">
+        <strong>⭐ Favoriten</strong>
+        <span>${favAnzahl} Karte${favAnzahl !== 1 ? 'n'  : ''} aus allen Gruppen</span>
+      </div>
+    </div>
+    <div class="export-sammlung-header" style="margin-top:0.4rem">Gruppen</div>`;
+  }
+
+  // Nach Sammlungen gegliedert
   getSortierteSammlungen().forEach(sam => {
     const gs = getSortierteGruppenInSammlung(sam.id);
     if (!gs.length) return;
@@ -2152,19 +2177,29 @@ document.getElementById('btn-export-start').addEventListener('click', async () =
     .map(el => el.dataset.gid);
   if (!selectedGids.length) { toast('Keine Gruppe ausgewählt'); return; }
 
-  const exportGruppen  = gruppen.filter(g => selectedGids.includes(g.id));
-  const exportStudenten = studenten.filter(s => selectedGids.includes(s.gruppeId));
-  const studExport = await Promise.all(exportStudenten.map(async s => ({
+  // Favoriten + normale Gruppen auflösen (dedup)
+  const hasFavoriten  = selectedGids.includes('__favoriten__');
+  const normalGids    = selectedGids.filter(g => g !== '__favoriten__');
+  const favStudenten  = hasFavoriten ? studenten.filter(s => s.favorit) : [];
+  const normStudenten = studenten.filter(s => normalGids.includes(s.gruppeId));
+  const seen          = new Set(favStudenten.map(s => s.id));
+  const exportStudentenRaw = [...favStudenten, ...normStudenten.filter(s => !seen.has(s.id))];
+
+  // Gruppen aus tatsächlich exportierten Karten ableiten
+  const exportGruppenIds = new Set(exportStudentenRaw.map(s => s.gruppeId));
+  const exportGruppen    = gruppen.filter(g => exportGruppenIds.has(g.id));
+
+  const studExport = await Promise.all(exportStudentenRaw.map(async s => ({
     ...s, foto: (s.modus === 'text' || !s.foto) ? null : await blobToDataUrl(s.foto)
   })));
 
-  const exportSammlIds = new Set(exportGruppen.map(g => g.sammlungId).filter(Boolean));
+  const exportSammlIds   = new Set(exportGruppen.map(g => g.sammlungId).filter(Boolean));
   const exportSammlungen = sammlungen.filter(s => exportSammlIds.has(s.id));
   const payload = {
     version: 2, exportiert: new Date().toISOString(),
     sammlungen: exportSammlungen, gruppen: exportGruppen, studenten: studExport
   };
-  // Dateiname: Gruppenname(n) einbauen
+  // Dateiname
   function sanitize(str) {
     return str
       .replace(/[äÄ]/g,'ae').replace(/[öÖ]/g,'oe').replace(/[üÜ]/g,'ue').replace(/ß/g,'ss')
@@ -2172,12 +2207,14 @@ document.getElementById('btn-export-start').addEventListener('click', async () =
   }
   const datum = new Date().toISOString().slice(0,10);
   let gruppenTeil;
-  if (selectedGids.length === gruppen.length) {
+  if (hasFavoriten && !normalGids.length) {
+    gruppenTeil = 'favoriten';
+  } else if (selectedGids.length === gruppen.length + (hasFavoriten ? 1 : 0)) {
     gruppenTeil = 'alle';
-  } else if (selectedGids.length === 1) {
+  } else if (exportGruppen.length === 1 && !hasFavoriten) {
     gruppenTeil = sanitize(exportGruppen[0].name);
   } else {
-    gruppenTeil = `${selectedGids.length}-Gruppen`;
+    gruppenTeil = hasFavoriten ? `favoriten-${normalGids.length}-gruppen` : `${exportGruppen.length}-gruppen`;
   }
 
   const filename = `memofix-${gruppenTeil}-${datum}.json`;
@@ -2207,7 +2244,10 @@ document.getElementById('btn-export-start').addEventListener('click', async () =
   }
 
   document.getElementById('export-modal').classList.add('hidden');
-  toast(`${exportGruppen.length} Gruppe${exportGruppen.length !== 1 ? 'n' : ''} exportiert`);
+  const toastMsg = hasFavoriten && !normalGids.length
+    ? `${exportStudentenRaw.length} Favorit${exportStudentenRaw.length !== 1 ? 'en' : ''} exportiert`
+    : `${exportGruppen.length} Gruppe${exportGruppen.length !== 1 ? 'n' : ''} exportiert`;
+  toast(toastMsg);
 });
 
 // Import Modal
@@ -2443,13 +2483,14 @@ async function erstelleTutorialGruppeWennNeu() {
   ladeOpenSammlungen();
   ladeOpenLernSammlungen();
   renderVerwaltung();
-  // Timer-Buttons & Autorepeat initialisieren
+  // Timer-Buttons, Autorepeat & Label-Opacity initialisieren
   document.querySelectorAll('.timer-btn').forEach(b =>
     b.classList.toggle('active', +b.dataset.sek === timerSekunden)
   );
   document.querySelectorAll('.timer-btn-repeat').forEach(b =>
     b.classList.toggle('active', autoRepeat)
   );
+  updateTimerLabelOpacity();
 })();
 
 // ── Safari: Timer bei Tab-Wechsel sauber pausieren/neustarten ──
