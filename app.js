@@ -436,6 +436,7 @@ async function ladeAlles() {
 }
 
 function gruppeKartenAnzahl(gid) {
+  if (gid === '__favoriten__') return studenten.filter(s => s.favorit).length;
   return studenten.filter(s => s.gruppeId === gid).length;
 }
 
@@ -599,6 +600,7 @@ function karteItemHtml(s) {
     <div class="karte-item">
       <div class="karte-foto-wrapper">
         ${thumb}
+        <button class="btn-favorit${s.favorit ? ' aktiv' : ''}" data-id="${s.id}" title="${s.favorit ? 'Favorit entfernen' : 'Als Favorit markieren'}">★</button>
       </div>
       <span class="karte-name karte-detail-trigger" data-id="${s.id}">${esc(s.name)}${s.notiz ? ' <span style="opacity:.45;font-size:.7rem">📝</span>' : ''}</span>
       <button class="btn-karte-ren"  data-id="${s.id}" title="Bearbeiten">✏️</button>
@@ -821,6 +823,18 @@ function renderLernAuswahl() {
     <div class="lern-sammlung-body${isOpen ? '' : ' hidden'}" data-lern-sid="__orphan__">
       ${lernGruppenHtml(orphans, false)}
     </div>`;
+  }
+  // ⭐ Virtuelle Favoriten-Gruppe (nur wenn Favoriten vorhanden)
+  const favAnzahl = studenten.filter(s => s.favorit).length;
+  if (favAnzahl) {
+    html += `<div style="height:1px;background:var(--border);margin:0.35rem 0 0.1rem"></div>
+      <div class="gruppe-check-item" data-gid="__favoriten__">
+        <div class="check-box">✓</div>
+        <div class="check-label">
+          <strong>⭐ Favoriten</strong>
+          <span>${favAnzahl} Karte${favAnzahl !== 1 ? 'n' : ''}</span>
+        </div>
+      </div>`;
   }
   container.innerHTML = html;
   updateLernStartBtn();
@@ -1502,6 +1516,20 @@ document.getElementById('sammlungen-liste').addEventListener('click', async e =>
     toast('Karte gelöscht');
     return;
   }
+  // Favorit togglen
+  const favBtn = e.target.closest('.btn-favorit');
+  if (favBtn) {
+    e.stopPropagation();
+    const id = favBtn.dataset.id;
+    const s  = studenten.find(x => x.id === id);
+    if (!s) return;
+    s.favorit = !s.favorit;
+    await dbPut('studenten', s);
+    favBtn.classList.toggle('aktiv', s.favorit);
+    favBtn.title = s.favorit ? 'Favorit entfernen' : 'Als Favorit markieren';
+    renderLernAuswahl();
+    return;
+  }
   // Sammlung verschieben
   const sammlMoveBtn = e.target.closest('.btn-sammlung-move');
   if (sammlMoveBtn && !sammlMoveBtn.disabled) {
@@ -1850,7 +1878,16 @@ document.getElementById('btn-schwaeche-waehlen').addEventListener('click', async
 
 document.getElementById('btn-lernen-start').addEventListener('click', () => {
   const selectedGids = getSelectedGids();
-  const karten = studenten.filter(s => selectedGids.includes(s.gruppeId));
+  let karten;
+  if (selectedGids.includes('__favoriten__')) {
+    const otherGids  = selectedGids.filter(g => g !== '__favoriten__');
+    const favKarten  = studenten.filter(s => s.favorit);
+    const otherKarten = studenten.filter(s => otherGids.includes(s.gruppeId));
+    const seen = new Set(favKarten.map(s => s.id));
+    karten = [...favKarten, ...otherKarten.filter(s => !seen.has(s.id))];
+  } else {
+    karten = studenten.filter(s => selectedGids.includes(s.gruppeId));
+  }
   if (!karten.length) return;
   // Tutorial-Gruppen immer in Reihenfolge (nicht mischen)
   const isTutorial = selectedGids.length === 1 &&
@@ -2282,17 +2319,20 @@ async function erstelleTutorialGruppeWennNeu() {
         <text x="180" y="188" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#555">↻ dreht sich um</text>
         <line x1="30" y1="204" x2="330" y2="204" stroke="#1e1e1e" stroke-width="1"/>
         <text x="180" y="228" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="12" font-weight="700" fill="#f0f0f0">So lernst du:</text>
-        <text x="50" y="252" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">①</text>
-        <text x="68" y="252" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Karte antippen → dreht sich um → ✓</text>
-        <text x="50" y="274" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">②</text>
-        <text x="68" y="274" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">„Begriff zeigen" → Flip → ✗ nachgeschaut</text>
-        <text x="50" y="296" font-family="-apple-system,sans-serif" font-size="11" fill="#666">③</text>
-        <text x="68" y="296" font-family="-apple-system,sans-serif" font-size="11" fill="#666">✓ oder ✗ antippen → Wertung korrigieren</text>
-        <text x="50" y="318" font-family="-apple-system,sans-serif" font-size="11" fill="#666">④</text>
-        <text x="68" y="318" font-family="-apple-system,sans-serif" font-size="11" fill="#666">← → Pfeile oder Wischen = vor/zurück</text>
-        <text x="50" y="340" font-family="-apple-system,sans-serif" font-size="11" fill="#555">⑤</text>
-        <text x="68" y="340" font-family="-apple-system,sans-serif" font-size="11" fill="#555">↺ Nachgeschaut üben nach der Runde</text>
-        <text x="180" y="372" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#444">Nochmal tippen = nächste Karte</text>
+        <text x="50" y="249" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">①</text>
+        <text x="68" y="249" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Karte antippen → dreht sich um → ✓</text>
+        <text x="50" y="269" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">②</text>
+        <text x="68" y="269" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">„Begriff zeigen" → Flip → ✗ nachgeschaut</text>
+        <text x="50" y="289" font-family="-apple-system,sans-serif" font-size="11" fill="#888">③</text>
+        <text x="68" y="289" font-family="-apple-system,sans-serif" font-size="11" fill="#888">✓ oder ✗ antippen → Wertung korrigieren</text>
+        <text x="50" y="309" font-family="-apple-system,sans-serif" font-size="11" fill="#777">④</text>
+        <text x="68" y="309" font-family="-apple-system,sans-serif" font-size="11" fill="#777">← → Pfeile oder Wischen = vor/zurück</text>
+        <text x="50" y="329" font-family="-apple-system,sans-serif" font-size="11" fill="#666">⑤</text>
+        <text x="68" y="329" font-family="-apple-system,sans-serif" font-size="11" fill="#666">↺ Nachgeschaut üben nach der Runde</text>
+        <text x="50" y="352" font-family="-apple-system,sans-serif" font-size="11" fill="#555">⑥</text>
+        <text x="68" y="352" font-family="-apple-system,sans-serif" font-size="11" fill="#555">⏱ Auto-Timer → Karten automatisch blättern</text>
+        <text x="50" y="372" font-family="-apple-system,sans-serif" font-size="11" fill="#444">⑦</text>
+        <text x="68" y="372" font-family="-apple-system,sans-serif" font-size="11" fill="#444">🔁 Autorepeat · ⭐ Favoriten in Lernen</text>
       </svg>`
     },
     {
@@ -2346,7 +2386,7 @@ async function erstelleTutorialGruppeWennNeu() {
     },
     {
       id: 'tut-6', name: 'Jetzt loslegen! 🎉',
-      svg: `<svg viewBox="0 0 360 480" xmlns="http://www.w3.org/2000/svg"><rect width="360" height="480" fill="#111"/><circle cx="180" cy="130" r="70" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="2"/><circle cx="180" cy="130" r="56" fill="#161616"/><polyline points="150,130 170,152 214,104" fill="none" stroke="#4caf50" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="90" cy="64" r="5" fill="#4caf50" opacity="0.5"/><circle cx="270" cy="56" r="4" fill="#cc4444" opacity="0.5"/><circle cx="60" cy="170" r="3" fill="#fff" opacity="0.3"/><circle cx="300" cy="178" r="5" fill="#4caf50" opacity="0.4"/><line x1="30" y1="222" x2="330" y2="222" stroke="#222" stroke-width="1"/><text x="180" y="248" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="13" font-weight="700" fill="#f0f0f0">Bereit! 🎉</text><text x="180" y="272" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Tutorial löschen: VERWALTUNG →</text><text x="180" y="290" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">Sammlung 🎓 Tutorial → ✕</text><text x="180" y="314" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#777">＋ am Gruppen-Header → Karte</text><text x="180" y="332" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#777">direkt in diese Gruppe hinzufügen</text><text x="180" y="356" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">Kartennamen antippen → Großansicht</text><text x="180" y="374" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">links/rechts wischen zum Blättern</text><text x="180" y="398" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#555">Regelmäßig unter SICHERUNG exportieren!</text><text x="180" y="420" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#444">Daten bleiben lokal im Browser.</text></svg>`
+      svg: `<svg viewBox="0 0 360 480" xmlns="http://www.w3.org/2000/svg"><rect width="360" height="480" fill="#111"/><circle cx="180" cy="118" r="62" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="2"/><circle cx="180" cy="118" r="50" fill="#161616"/><polyline points="154,118 172,140 210,96" fill="none" stroke="#4caf50" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="90" cy="56" r="5" fill="#4caf50" opacity="0.5"/><circle cx="270" cy="48" r="4" fill="#cc4444" opacity="0.5"/><circle cx="60" cy="156" r="3" fill="#fff" opacity="0.3"/><circle cx="300" cy="162" r="5" fill="#4caf50" opacity="0.4"/><line x1="30" y1="205" x2="330" y2="205" stroke="#222" stroke-width="1"/><text x="180" y="230" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="13" font-weight="700" fill="#f0f0f0">Bereit! 🎉</text><text x="180" y="254" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">⏱ Auto-Timer &amp; 🔁 Autorepeat beim Lernen</text><text x="180" y="274" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#aaa">⭐ Stern antippen → Favoriten markieren</text><text x="180" y="296" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#888">Tutorial löschen: VERWALTUNG →</text><text x="180" y="314" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#888">Sammlung 🎓 Tutorial → ✕</text><text x="180" y="336" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#777">＋ am Gruppen-Header → Karte hinzufügen</text><text x="180" y="356" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#666">Kartennamen antippen → Großansicht</text><text x="180" y="376" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" fill="#555">Regelmäßig unter SICHERUNG exportieren!</text><text x="180" y="398" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="10" fill="#444">Daten bleiben lokal im Browser.</text></svg>`
     }
   ];
 
