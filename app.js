@@ -846,7 +846,7 @@ function renderLernAuswahl() {
       <div class="gruppe-check-item" data-gid="__favoriten__">
         <div class="check-box">✓</div>
         <div class="check-label">
-          <strong>⭐ Favoriten</strong>
+          <strong>Favoriten ⭐</strong>
           <span>${favAnzahl} Karte${favAnzahl !== 1 ? 'n' : ''}</span>
         </div>
       </div>`;
@@ -2114,8 +2114,8 @@ document.getElementById('btn-export').addEventListener('click', () => {
     html += `<div class="gruppe-check-item" data-gid="__favoriten__">
       ${checkBoxHtml(false)}
       <div class="check-label">
-        <strong>⭐ Favoriten</strong>
-        <span>${favAnzahl} Karte${favAnzahl !== 1 ? 'n'  : ''} aus allen Gruppen</span>
+        <strong>Favoriten ⭐</strong>
+        <span>${favAnzahl} Karte${favAnzahl !== 1 ? 'n' : ''} aus allen Gruppen</span>
       </div>
     </div>
     <div class="export-sammlung-header" style="margin-top:0.4rem">Gruppen</div>`;
@@ -2495,12 +2495,20 @@ async function erstelleTutorialGruppeWennNeu() {
 
 // ── Safari: Timer bei Tab-Wechsel sauber pausieren/neustarten ──
 document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    // iOS kann Blob-URLs nach App-Suspend invalidieren (Speicher freigegeben).
+    // URL-Cache leeren → Verwaltung erstellt beim nächsten Render frische URLs aus IndexedDB.
+    urlCache.forEach((url) => URL.revokeObjectURL(url));
+    urlCache.clear();
+    renderVerwaltung();
+  }
+
+  // Timer: pausieren beim Wegswipen, neustarten beim Zurückkommen
   const sessionAktiv = !document.getElementById('lernen-flashcard').classList.contains('hidden');
   if (!sessionAktiv || !timerSekunden) return;
   if (document.hidden) {
     stoppeAutoTimer();
   } else {
-    // Nur neustarten wenn Vorderseite noch sichtbar (noch nicht aufgedeckt)
     if (!nameVisible) starteAutoTimer();
   }
 });
