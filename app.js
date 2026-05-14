@@ -85,6 +85,49 @@ function dbClear(store) {
 }
 
 // ============================================================
+// FARBPALETTE FÜR SAMMLUNGEN
+// ============================================================
+
+const FARB_PALETTE = [
+  '#7b677e', // mauve
+  '#7e676d', // rose
+  '#67697e', // slate-blau
+  '#677e7d', // teal
+  '#677e68', // salbei
+  '#7e7e67', // olive
+  '#6d7a7e', // stahl
+  '#7e6e67', // sienna
+  '#6e677e', // lavendel
+  '#7e7867', // sand
+  '#677e75', // seafoam
+  '#7e6778', // pflaume
+  '#7a7267', // taupe
+  '#677868', // moos
+  '#7e6d7a', // lila-grau
+  '#6e7a67', // farn
+];
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function naechsteFarbe() {
+  const used = new Set(sammlungen.map(s => s.farbe).filter(Boolean));
+  return FARB_PALETTE.find(f => !used.has(f)) || FARB_PALETTE[sammlungen.length % FARB_PALETTE.length];
+}
+
+function sammlungFarbe(sam, idx = 0) {
+  return sam.farbe || FARB_PALETTE[idx % FARB_PALETTE.length];
+}
+
+function sammlungStyle(farbe) {
+  return `--sam-farbe:${farbe};--sam-farbe-tint:${hexToRgba(farbe, 0.07)}`;
+}
+
+// ============================================================
 // LINK HELPERS
 // ============================================================
 
@@ -745,7 +788,8 @@ function _renderVerwaltung() {
       </div>`;
     }).join('');
 
-    html += `<div class="sammlung-section">
+    const farbe = sammlungFarbe(sam, si);
+    html += `<div class="sammlung-section" style="${sammlungStyle(farbe)}">
       <div class="sammlung-header" data-sid="${sam.id}">
         <span class="sammlung-toggle-icon">${isOpen ? '▼' : '▶'}</span>
         <span class="sammlung-name-text">${esc(sam.name)}</span>
@@ -753,6 +797,7 @@ function _renderVerwaltung() {
         <div class="sammlung-btns">
           <button class="btn-sammlung-move" data-id="${sam.id}" data-dir="up"${si === 0 ? ' disabled' : ''}>▲</button>
           <button class="btn-sammlung-move" data-id="${sam.id}" data-dir="down"${si === sortierteSammlungen.length - 1 ? ' disabled' : ''}>▼</button>
+          <button class="btn-sammlung-farbe" data-id="${sam.id}" style="background:${farbe}" title="Farbe ändern"></button>
           <button class="btn-sammlung-ren" data-id="${sam.id}">✏️</button>
           <button class="btn-sammlung-del" data-id="${sam.id}">✕</button>
         </div>
@@ -847,28 +892,33 @@ function renderLernAuswahl() {
     }).join('');
   }
 
-  sortierteSammlungen.forEach(sam => {
+  sortierteSammlungen.forEach((sam, si) => {
     const gs = getSortierteGruppenInSammlung(sam.id);
     if (!gs.length) return;
     const isOpen = openLernSammlungen.has(sam.id);
-    html += `<div class="lern-sammlung-header" data-lern-sid="${sam.id}">
-      <span class="lern-sammlung-toggle">${isOpen ? '▼' : '▶'}</span>
-      <span>${esc(sam.name)}</span>
-    </div>
-    <div class="lern-sammlung-body${isOpen ? '' : ' hidden'}" data-lern-sid="${sam.id}">
-      ${lernGruppenHtml(gs)}
+    const farbe  = sammlungFarbe(sam, si);
+    html += `<div class="lern-sammlung-section" style="${sammlungStyle(farbe)}">
+      <div class="lern-sammlung-header" data-lern-sid="${sam.id}">
+        <span class="lern-sammlung-toggle">${isOpen ? '▼' : '▶'}</span>
+        <span>${esc(sam.name)}</span>
+      </div>
+      <div class="lern-sammlung-body${isOpen ? '' : ' hidden'}" data-lern-sid="${sam.id}">
+        ${lernGruppenHtml(gs)}
+      </div>
     </div>`;
   });
   // Orphan-Gruppen
   const orphans = gruppen.filter(g => !g.sammlungId || !sammlungen.find(s => s.id === g.sammlungId));
   if (orphans.length) {
     const isOpen = openLernSammlungen.has('__orphan__');
-    html += `<div class="lern-sammlung-header" data-lern-sid="__orphan__">
-      <span class="lern-sammlung-toggle">${isOpen ? '▼' : '▶'}</span>
-      <span>Ohne Sammlung</span>
-    </div>
-    <div class="lern-sammlung-body${isOpen ? '' : ' hidden'}" data-lern-sid="__orphan__">
-      ${lernGruppenHtml(orphans, false)}
+    html += `<div class="lern-sammlung-section">
+      <div class="lern-sammlung-header" data-lern-sid="__orphan__">
+        <span class="lern-sammlung-toggle">${isOpen ? '▼' : '▶'}</span>
+        <span>Ohne Sammlung</span>
+      </div>
+      <div class="lern-sammlung-body${isOpen ? '' : ' hidden'}" data-lern-sid="__orphan__">
+        ${lernGruppenHtml(orphans, false)}
+      </div>
     </div>`;
   }
   // ⭐ Virtuelle Favoriten-Gruppe (nur wenn Favoriten vorhanden)
@@ -1502,7 +1552,7 @@ document.getElementById('btn-sammlung-add').addEventListener('click', async () =
   const input = document.getElementById('input-neue-sammlung');
   const name  = input.value.trim();
   if (!name) return;
-  const sam = { id: 'sammlung-' + Date.now(), name, erstellt: new Date().toISOString() };
+  const sam = { id: 'sammlung-' + Date.now(), name, farbe: naechsteFarbe(), erstellt: new Date().toISOString() };
   await dbPut('sammlungen', sam);
   sammlungen.push(sam);
   openSammlungen.add(sam.id);
@@ -1602,6 +1652,13 @@ document.getElementById('sammlungen-liste').addEventListener('click', async e =>
     favBtn.classList.toggle('aktiv', newFavorit);
     favBtn.title = newFavorit ? 'Favorit entfernen' : 'Als Favorit markieren';
     renderLernAuswahl();
+    return;
+  }
+  // Sammlung Farbe ändern
+  const farbBtn = e.target.closest('.btn-sammlung-farbe');
+  if (farbBtn) {
+    e.stopPropagation();
+    zeigeFarbPicker(farbBtn.dataset.id, farbBtn);
     return;
   }
   // Sammlung verschieben
@@ -2550,6 +2607,58 @@ async function erstelleTutorialGruppeWennNeu() {
   );
   updateTimerLabelOpacity();
 })();
+
+// ============================================================
+// FARB-PICKER FÜR SAMMLUNGEN
+// ============================================================
+
+const farbPicker = document.createElement('div');
+farbPicker.id = 'farb-picker';
+farbPicker.className = 'farb-picker hidden';
+farbPicker.innerHTML = FARB_PALETTE.map(f =>
+  `<button class="farb-swatch" data-farbe="${f}" style="background:${f}" title="${f}"></button>`
+).join('');
+document.body.appendChild(farbPicker);
+
+let farbPickerSid = null;
+
+function zeigeFarbPicker(sid, anchorEl) {
+  farbPickerSid = sid;
+  const rect = anchorEl.getBoundingClientRect();
+  const pickerW = 200;
+  const left = Math.min(rect.left, window.innerWidth - pickerW - 8);
+  farbPicker.style.top  = (rect.bottom + 6) + 'px';
+  farbPicker.style.left = Math.max(8, left) + 'px';
+  // Aktive Farbe markieren
+  const sam = sammlungen.find(x => x.id === sid);
+  const aktiv = sam?.farbe;
+  farbPicker.querySelectorAll('.farb-swatch').forEach(sw => {
+    sw.classList.toggle('aktiv', sw.dataset.farbe === aktiv);
+  });
+  farbPicker.classList.toggle('hidden');
+}
+
+farbPicker.addEventListener('click', async e => {
+  const swatch = e.target.closest('.farb-swatch');
+  if (!swatch) return;
+  const newFarbe = swatch.dataset.farbe;
+  const sam = sammlungen.find(x => x.id === farbPickerSid);
+  if (sam) {
+    sam.farbe = newFarbe;
+    await dbPut('sammlungen', sam);
+    renderVerwaltung();
+    renderLernAuswahl();
+  }
+  farbPicker.classList.add('hidden');
+});
+
+document.addEventListener('click', e => {
+  if (!farbPicker.classList.contains('hidden') &&
+      !e.target.closest('#farb-picker') &&
+      !e.target.closest('.btn-sammlung-farbe')) {
+    farbPicker.classList.add('hidden');
+  }
+});
 
 // ── Safari: Timer bei Tab-Wechsel sauber pausieren/neustarten ──
 document.addEventListener('visibilitychange', async () => {
