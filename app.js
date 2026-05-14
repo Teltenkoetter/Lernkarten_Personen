@@ -89,22 +89,25 @@ function dbClear(store) {
 // ============================================================
 
 const FARB_PALETTE = [
+  // Neutral
+  '#d6d6d6', // hell-grau (fast weiß)
+  '#8e8e8e', // mittel-grau
+  // Helle gedämpfte Töne (~65 % Helligkeit, 15–20 % Sättigung)
+  '#c4a8aa', // helles rose
+  '#c4b898', // helles sand
+  '#aac4a8', // helles salbei
+  '#a8b6c4', // helles stahl-blau
+  '#b2a8c4', // helles lavendel
+  '#a8c2be', // helles teal
+  '#c2baa0', // helles taupe
+  // Dunkle gedämpfte Töne (~44 % Helligkeit, 15–20 % Sättigung)
   '#7b677e', // mauve
   '#7e676d', // rose
   '#67697e', // slate-blau
   '#677e7d', // teal
   '#677e68', // salbei
   '#7e7e67', // olive
-  '#6d7a7e', // stahl
-  '#7e6e67', // sienna
-  '#6e677e', // lavendel
-  '#7e7867', // sand
-  '#677e75', // seafoam
-  '#7e6778', // pflaume
-  '#7a7267', // taupe
-  '#677868', // moos
-  '#7e6d7a', // lila-grau
-  '#6e7a67', // farn
+  '#7a6e60', // dunkles taupe
 ];
 
 function hexToRgba(hex, alpha) {
