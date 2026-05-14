@@ -1231,7 +1231,7 @@ textarea.input-notiz::placeholder { color: var(--muted); }
 .sammlung-section {
   margin-bottom: 0.5rem;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--sam-farbe, var(--border));
+  border-left: 6px solid var(--sam-farbe, var(--border));
   border-radius: 13px; overflow: hidden;
   background: var(--sam-farbe-tint, transparent);
   transition: border-color 0.2s;
@@ -1288,7 +1288,7 @@ textarea.input-notiz::placeholder { color: var(--muted); }
 .lern-sammlung-section {
   margin-bottom: 0.35rem;
   border: 1px solid rgba(255,255,255,0.07);
-  border-left: 3px solid var(--sam-farbe, rgba(255,255,255,0.12));
+  border-left: 6px solid var(--sam-farbe, rgba(255,255,255,0.12));
   border-radius: 10px; overflow: hidden;
   background: var(--sam-farbe-tint, transparent);
 }

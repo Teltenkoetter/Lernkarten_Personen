@@ -2448,6 +2448,7 @@ document.getElementById('btn-import-start').addEventListener('click', async () =
     }
     await ladeAlles();
     renderVerwaltung();
+    renderLernAuswahl();
     document.getElementById('import-modal').classList.add('hidden');
     importDatenBuffer = null;
     toast(`Import erfolgreich – ${studenten.length} Karten geladen`);
