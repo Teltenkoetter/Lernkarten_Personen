@@ -1329,9 +1329,10 @@ function showView(name) {
 // ============================================================
 
 function blobToDataUrl(blob) {
-  return new Promise(res => {
+  return new Promise((res, rej) => {
     const r = new FileReader();
-    r.onload = () => res(r.result);
+    r.onload  = () => res(r.result);
+    r.onerror = () => rej(r.error || new Error('FileReader-Fehler'));
     r.readAsDataURL(blob);
   });
 }
@@ -2237,9 +2238,18 @@ document.getElementById('btn-export-start').addEventListener('click', async () =
   const exportGruppenIds = new Set(exportStudentenRaw.map(s => s.gruppeId));
   const exportGruppen    = gruppen.filter(g => exportGruppenIds.has(g.id));
 
-  const studExport = await Promise.all(exportStudentenRaw.map(async s => ({
-    ...s, foto: (s.modus === 'text' || !s.foto) ? null : await blobToDataUrl(s.foto)
-  })));
+  // Frische Blobs aus DB lesen (iOS-Schutz: in-memory Blobs können nach Suspend ungültig sein)
+  const studExport = await Promise.all(exportStudentenRaw.map(async s => {
+    if (s.modus === 'text' || !s.foto) return { ...s, foto: null };
+    try {
+      const dbRec   = await dbGet('studenten', s.id);
+      const blob    = dbRec?.foto || s.foto;
+      return { ...s, foto: await blobToDataUrl(blob) };
+    } catch (err) {
+      console.warn('Export Foto-Fehler für', s.name, err);
+      return { ...s, foto: null }; // Karte ohne Foto exportieren statt abbrechen
+    }
+  }));
 
   const exportSammlIds   = new Set(exportGruppen.map(g => g.sammlungId).filter(Boolean));
   const exportSammlungen = sammlungen.filter(s => exportSammlIds.has(s.id));

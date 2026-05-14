@@ -19,6 +19,7 @@
 
   <header>
     <h1><span class="title-memo">Memo</span><span class="title-pix">Fix</span></h1>
+    <img src="./icon.svg" class="header-logo-bg" aria-hidden="true">
     <button id="btn-info" class="btn-help" title="Hilfe">?</button>
   </header>
 
@@ -129,6 +130,10 @@
               <span class="anleitung-icon">⚠️</span>
               <div class="anleitung-text">„Safari-Daten löschen" in den iPhone-Einstellungen entfernt auch alle Karten — regelmäßig exportieren!</div>
             </div>
+            <div class="anleitung-zeile">
+              <span class="anleitung-icon">🖼️</span>
+              <div class="anleitung-text"><strong>Bilder verschwunden oder Export hängt?</strong> — App schließen und neu öffnen · die Bilder werden sofort wieder geladen · keine Daten gehen verloren</div>
+            </div>
           </div>
         </div>
         <p class="modal-meta">Version 2.0 · Klaus Teltenkötter 2026</p>
@@ -171,7 +176,7 @@
         </div>
         <div class="form-group">
           <label for="karte-edit-notiz">Notiz <span class="label-optional">(optional)</span></label>
-          <textarea id="karte-edit-notiz" class="input-notiz" rows="2" maxlength="500" placeholder="Zusatzinfo, erscheint beim Aufdecken…"></textarea>
+          <textarea id="karte-edit-notiz" class="input-notiz" rows="2" maxlength="250" placeholder="Zusatzinfo, erscheint beim Aufdecken… (max. 250 Zeichen)"></textarea>
         </div>
         <div class="form-group">
           <label for="karte-edit-links">Links <span class="label-optional">(optional, eine URL pro Zeile)</span></label>
@@ -201,6 +206,7 @@
     <div class="modal">
       <div class="modal-header">
         <h2>Gruppen exportieren</h2>
+        <img src="./icon.svg" class="header-logo-bg" aria-hidden="true">
         <button id="btn-export-modal-close" class="btn-modal-close">✕</button>
       </div>
       <div class="modal-body">
@@ -308,7 +314,7 @@
           </div>
           <div class="form-group">
             <label for="input-notiz">Notiz <span class="label-optional">(optional, erscheint beim Aufdecken)</span></label>
-            <textarea id="input-notiz" class="input-notiz" rows="2" maxlength="500" placeholder="Zusatzinfo zum Begriff…"></textarea>
+            <textarea id="input-notiz" class="input-notiz" rows="2" maxlength="250" placeholder="Zusatzinfo zum Begriff… (max. 250 Zeichen)"></textarea>
           </div>
           <div class="form-group">
             <label for="input-links">Links <span class="label-optional">(optional, eine URL pro Zeile)</span></label>
@@ -325,7 +331,7 @@
 
       <div id="lernen-auswahl">
         <div class="card">
-          <div class="card-header"><h2>Gruppen auswählen</h2></div>
+          <div class="card-header"><h2>Gruppen auswählen</h2><img src="./icon.svg" class="header-logo-bg" aria-hidden="true"></div>
           <div id="gruppen-checkboxen" class="gruppen-checkboxen"></div>
           <div class="selection-actions">
             <button id="btn-alle-waehlen" class="btn-secondary">Alle</button>
