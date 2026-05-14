@@ -1480,6 +1480,12 @@ document.getElementById('btn-karte-edit-save').addEventListener('click', async (
         });
         if (urlCache.has(s.id)) { URL.revokeObjectURL(urlCache.get(s.id)); urlCache.delete(s.id); }
         s.foto = blob;
+      } else {
+        // Kein neues Foto — frisches Blob aus DB lesen (iOS-Blob-Schutz)
+        try {
+          const dbRec = await dbGet('studenten', s.id);
+          if (dbRec?.foto) s.foto = dbRec.foto;
+        } catch (err) { console.warn('Foto DB-Fehler:', err); }
       }
     }
 
