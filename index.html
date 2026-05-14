@@ -171,7 +171,11 @@
         </div>
         <div class="form-group">
           <label for="karte-edit-notiz">Notiz <span class="label-optional">(optional)</span></label>
-          <input type="text" id="karte-edit-notiz" maxlength="100" placeholder="Zusatzinfo, erscheint beim Aufdecken…">
+          <textarea id="karte-edit-notiz" class="input-notiz" rows="2" maxlength="500" placeholder="Zusatzinfo, erscheint beim Aufdecken…"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="karte-edit-links">Links <span class="label-optional">(optional, eine URL pro Zeile)</span></label>
+          <textarea id="karte-edit-links" class="input-notiz" rows="2" maxlength="1000" placeholder="https://…"></textarea>
         </div>
         <button id="btn-karte-edit-save" class="btn-primary">Speichern</button>
       </div>
@@ -304,7 +308,11 @@
           </div>
           <div class="form-group">
             <label for="input-notiz">Notiz <span class="label-optional">(optional, erscheint beim Aufdecken)</span></label>
-            <input type="text" id="input-notiz" placeholder="Zusatzinfo zum Begriff…" maxlength="100">
+            <textarea id="input-notiz" class="input-notiz" rows="2" maxlength="500" placeholder="Zusatzinfo zum Begriff…"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="input-links">Links <span class="label-optional">(optional, eine URL pro Zeile)</span></label>
+            <textarea id="input-links" class="input-notiz" rows="2" maxlength="1000" placeholder="https://…"></textarea>
           </div>
           <button type="submit" id="btn-karte-speichern" class="btn-primary">Karte speichern</button>
         </form>
@@ -387,6 +395,7 @@
             </div>
           </div>
         </div>
+        <div id="lern-card-links" class="lern-card-links hidden"></div>
         <div id="lern-swipe-hint" class="lern-swipe-hint hidden">
           <div class="lern-swipe-hint-inner">
             <span class="lern-swipe-arrow">←</span>
@@ -565,6 +574,7 @@
         <span id="karte-detail-gruppe" class="karte-detail-gruppe"></span>
         <span id="karte-detail-counter" class="karte-detail-counter"></span>
         <span id="karte-detail-notiz" class="karte-detail-notiz hidden"></span>
+        <div id="karte-detail-links" class="karte-detail-links hidden"></div>
       </div>
     </div>
     <div id="karte-detail-swipe-hint" class="karte-detail-swipe-hint hidden">‹ wischen ›</div>

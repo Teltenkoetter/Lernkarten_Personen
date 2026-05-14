@@ -85,6 +85,33 @@ function dbClear(store) {
 }
 
 // ============================================================
+// LINK HELPERS
+// ============================================================
+
+function parseLinks(val) {
+  if (!val) return [];
+  return val.split('\n')
+    .map(l => l.trim())
+    .filter(l => /^https?:\/\/.+/.test(l));
+}
+
+function linksHtml(arr) {
+  if (!arr?.length) return '';
+  return arr.map(url => {
+    const label = url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').substring(0, 40);
+    return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" class="link-btn">🔗 ${esc(label)}</a>`;
+  }).join('');
+}
+
+function showLinks(elId, arr) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const html = linksHtml(arr);
+  if (html) { el.innerHTML = html; el.classList.remove('hidden'); }
+  else        el.classList.add('hidden');
+}
+
+// ============================================================
 // STATE
 // ============================================================
 
@@ -246,22 +273,26 @@ function zeigeNameAuto() {
     document.getElementById('lern-name-overlay').classList.remove('hidden');
     const n = document.getElementById('lern-notiz-text');
     if (s.notiz) { n.textContent = s.notiz; n.classList.remove('hidden'); } else n.classList.add('hidden');
+    showLinks('lern-card-links', s.links || []);
   } else if (kartenModus === 'text') {
     document.getElementById('lern-name-karte').classList.add('hidden');
     document.getElementById('lern-vorderseite-text').innerHTML = renderVorderseiteHtml(s.vorderseite || '');
     document.getElementById('lernkarte-text-vorderseite').classList.remove('hidden');
     const nr = document.getElementById('lern-notiz-text-rueck');
     if (s.notiz) { nr.textContent = s.notiz; nr.classList.remove('hidden'); } else nr.classList.add('hidden');
+    showLinks('lern-card-links', s.links || []);
   } else if (lernModus === 'name') {
     if (s.foto) document.getElementById('lern-foto').src = getFotoUrl(s);
     document.getElementById('lernkarte-foto-wrapper').classList.remove('hidden');
     document.getElementById('lern-name-karte').classList.add('hidden');
     const n = document.getElementById('lern-notiz-text');
     if (s.notiz) { n.textContent = s.notiz; n.classList.remove('hidden'); } else n.classList.add('hidden');
+    showLinks('lern-card-links', s.links || []);
   } else {
     document.getElementById('lern-name-overlay').classList.remove('hidden');
     const n = document.getElementById('lern-notiz-text');
     if (s.notiz) { n.textContent = s.notiz; n.classList.remove('hidden'); } else n.classList.add('hidden');
+    showLinks('lern-card-links', s.links || []);
   }
   document.getElementById('lern-hint-pill').classList.add('hidden');
   document.getElementById('btn-aufdecken').style.visibility = 'hidden';
@@ -528,6 +559,7 @@ function fillKarteDetail(s) {
   const notizEl = document.getElementById('karte-detail-notiz');
   if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
   else { notizEl.classList.add('hidden'); }
+  showLinks('karte-detail-links', s.links || []);
   const counterEl = document.getElementById('karte-detail-counter');
   if (counterEl) counterEl.textContent = detailIds.length > 1 ? `${detailIndex + 1} / ${detailIds.length}` : '';
 }
@@ -616,7 +648,7 @@ function karteItemHtml(s) {
       <div class="karte-foto-wrapper">
         ${thumb}
       </div>
-      <span class="karte-name karte-detail-trigger" data-id="${s.id}">${esc(s.name)}${s.notiz ? ' <span style="opacity:.45;font-size:.7rem">📝</span>' : ''}</span>
+      <span class="karte-name karte-detail-trigger" data-id="${s.id}">${esc(s.name)}${s.notiz ? ' <span style="opacity:.45;font-size:.7rem">📝</span>' : ''}${s.links?.length ? ' <span style="opacity:.45;font-size:.7rem">🔗</span>' : ''}</span>
       <button class="btn-favorit${s.favorit ? ' aktiv' : ''}" data-id="${s.id}" title="${s.favorit ? 'Favorit entfernen' : 'Als Favorit markieren'}">★</button>
       <button class="btn-karte-ren"  data-id="${s.id}" title="Bearbeiten">✏️</button>
       <button class="btn-karte-copy" data-id="${s.id}" title="Kopieren">📋</button>
@@ -1032,6 +1064,7 @@ function zeigeKarte() {
   document.getElementById('lern-gruppe-text').textContent       = gName;
   document.getElementById('lern-name-karte-gruppe').textContent = gName;
   document.getElementById('lern-favorit-stern').classList.toggle('hidden', !s.favorit);
+  document.getElementById('lern-card-links').classList.add('hidden');
 
   // Fortschrittsbalken + Counter
   const answered = answeredIds.size;
@@ -1095,6 +1128,7 @@ function zeigeName(wertung) {
     const notizEl = document.getElementById('lern-notiz-text');
     if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
     else { notizEl.classList.add('hidden'); }
+    showLinks('lern-card-links', s.links || []);
   } else if (kartenModus === 'text') {
     // Begriff-Karte normal aufdecken: Info/Definition anzeigen (Begriff war vorne)
     document.getElementById('lern-name-karte').classList.add('hidden');
@@ -1103,6 +1137,7 @@ function zeigeName(wertung) {
     const notizRueck = document.getElementById('lern-notiz-text-rueck');
     if (s.notiz) { notizRueck.textContent = s.notiz; notizRueck.classList.remove('hidden'); }
     else { notizRueck.classList.add('hidden'); }
+    showLinks('lern-card-links', s.links || []);
   } else if (lernModus === 'name') {
     // Foto-Karte umgekehrt aufdecken: Bild anzeigen
     document.getElementById('lern-foto').src = getFotoUrl(s);
@@ -1111,12 +1146,14 @@ function zeigeName(wertung) {
     const notizEl = document.getElementById('lern-notiz-text');
     if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
     else { notizEl.classList.add('hidden'); }
+    showLinks('lern-card-links', s.links || []);
   } else {
     // Foto-Karte normal aufdecken: Begriff im Overlay
     document.getElementById('lern-name-overlay').classList.remove('hidden');
     const notizEl = document.getElementById('lern-notiz-text');
     if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
     else { notizEl.classList.add('hidden'); }
+    showLinks('lern-card-links', s.links || []);
   }
   // Hint Pill verstecken, Fortschrittsbalken aktualisieren
   document.getElementById('lern-hint-pill').classList.add('hidden');
@@ -1220,6 +1257,7 @@ function openKarteEditModal(studentId, mode) {
   document.getElementById('karte-edit-titel').textContent = mode === 'copy' ? 'Karte kopieren' : 'Karte bearbeiten';
   document.getElementById('karte-edit-name').value  = s.name;
   document.getElementById('karte-edit-notiz').value = s.notiz || '';
+  document.getElementById('karte-edit-links').value = (s.links || []).join('\n');
 
   // Typ-Chips setzen
   const isFoto = s.modus !== 'text';
@@ -1392,6 +1430,7 @@ document.getElementById('btn-karte-edit-save').addEventListener('click', async (
   const name     = document.getElementById('karte-edit-name').value.trim();
   const gruppeId = document.getElementById('karte-edit-gruppe').value;
   const notiz    = document.getElementById('karte-edit-notiz').value.trim();
+  const links    = parseLinks(document.getElementById('karte-edit-links').value);
   if (!name || !gruppeId) return;
 
   if (editModalMode === 'copy') {
@@ -1399,13 +1438,13 @@ document.getElementById('btn-karte-edit-save').addEventListener('click', async (
     let newS;
     if (orig.modus === 'text') {
       newS = { id: Date.now().toString(), name, gruppeId, modus: 'text',
-               foto: null, vorderseite: orig.vorderseite || '', notiz,
+               foto: null, vorderseite: orig.vorderseite || '', notiz, links,
                erstellt: new Date().toISOString() };
     } else {
       const fotoBuf = await orig.foto.arrayBuffer();
       newS = { id: Date.now().toString(), name, gruppeId, modus: 'foto',
                foto: new Blob([fotoBuf], { type: orig.foto.type }),
-               vorderseite: '', notiz, erstellt: new Date().toISOString() };
+               vorderseite: '', notiz, links, erstellt: new Date().toISOString() };
     }
     await dbPut('studenten', newS);
     studenten.push(newS);
@@ -1423,6 +1462,7 @@ document.getElementById('btn-karte-edit-save').addEventListener('click', async (
     s.name     = name;
     s.gruppeId = gruppeId;
     s.notiz    = notiz;
+    s.links    = links;
 
     if (newModus === 'text') {
       s.modus       = 'text';
@@ -1762,6 +1802,7 @@ document.getElementById('form-karte').addEventListener('submit', async e => {
   const gruppeId = document.getElementById('select-gruppe').value;
   const modus    = document.getElementById('chip-foto').classList.contains('active') ? 'foto' : 'text';
   const notiz    = document.getElementById('input-notiz').value.trim();
+  const links    = parseLinks(document.getElementById('input-links').value);
   if (!name || !gruppeId) return;
   const btn = document.getElementById('btn-karte-speichern');
   btn.disabled = true; btn.textContent = 'Wird gespeichert…';
@@ -1771,16 +1812,17 @@ document.getElementById('form-karte').addEventListener('submit', async e => {
       const file = document.getElementById('input-foto').files[0];
       if (!file) { toast('Bitte ein Foto auswählen'); return; }
       const blob = await compressPhoto(file);
-      s = { id: Date.now().toString(), name, gruppeId, modus: 'foto', foto: blob, vorderseite: '', notiz, erstellt: new Date().toISOString() };
+      s = { id: Date.now().toString(), name, gruppeId, modus: 'foto', foto: blob, vorderseite: '', notiz, links, erstellt: new Date().toISOString() };
     } else {
       const vorderseite = document.getElementById('input-vorderseite').value.trim();
       if (!vorderseite) { toast('Bitte einen Text eingeben'); return; }
-      s = { id: Date.now().toString(), name, gruppeId, modus: 'text', foto: null, vorderseite, notiz, erstellt: new Date().toISOString() };
+      s = { id: Date.now().toString(), name, gruppeId, modus: 'text', foto: null, vorderseite, notiz, links, erstellt: new Date().toISOString() };
     }
     await dbPut('studenten', s);
     studenten.push(s);
     document.getElementById('input-name').value       = '';
     document.getElementById('input-notiz').value      = '';
+    document.getElementById('input-links').value      = '';
     document.getElementById('input-foto').value       = '';
     document.getElementById('input-vorderseite').value = '';
     document.getElementById('foto-vorschau').classList.add('hidden');
@@ -2494,12 +2536,13 @@ async function erstelleTutorialGruppeWennNeu() {
 })();
 
 // ── Safari: Timer bei Tab-Wechsel sauber pausieren/neustarten ──
-document.addEventListener('visibilitychange', () => {
+document.addEventListener('visibilitychange', async () => {
   if (!document.hidden) {
-    // iOS kann Blob-URLs nach App-Suspend invalidieren (Speicher freigegeben).
-    // URL-Cache leeren → Verwaltung erstellt beim nächsten Render frische URLs aus IndexedDB.
-    urlCache.forEach((url) => URL.revokeObjectURL(url));
+    // iOS kann Blob-Objekte und Blob-URLs nach App-Suspend freigeben.
+    // Alle Daten frisch aus IndexedDB laden → garantiert valide Blobs.
+    urlCache.forEach(url => URL.revokeObjectURL(url));
     urlCache.clear();
+    await ladeAlles();
     renderVerwaltung();
   }
 
