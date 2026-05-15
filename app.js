@@ -90,13 +90,13 @@ function dbClear(store) {
 
 const FARB_PALETTE = [
   '#b4b4b4', // grau        (neutral)
-  '#c48888', // rose-rot    (  0°)
-  '#c4a868', // amber       ( 48°)
-  '#a4c468', // limette     ( 90°)
-  '#68c498', // minze       (150°)
-  '#68a4c4', // himmelblau  (205°)
-  '#9068c4', // violett     (260°)
-  '#c468b0', // pink        (312°)
+  '#c47878', // rot          (  0°)
+  '#d0c455', // gelb         ( 55°)
+  '#84c460', // grün         (105°)
+  '#55c4a0', // teal         (160°)
+  '#5898c4', // blau         (210°)
+  '#7860c4', // violett      (255°)
+  '#c460b0', // pink         (315°)
 ];
 
 function hexToRgba(hex, alpha) {
