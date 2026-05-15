@@ -2480,20 +2480,55 @@ async function exportAlsPDF(studExport, exportGruppen, exportSammlungen, win) {
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#fff;color:#111;padding:8mm}
 @page{size:A4 portrait;margin:12mm 10mm}
-.pv-sammlung{margin-bottom:7mm}
-.pv-sammlung-titel{font-size:13pt;font-weight:700;border-bottom:2pt solid currentColor;padding-bottom:2mm;margin-bottom:3mm}
-.pv-gruppe-titel{font-size:10pt;font-weight:600;color:#444;margin:4mm 0 2mm}
-.pv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm}
-.pv-card{border:1pt solid #ccc;border-left:3pt solid var(--pv-farbe,#888);border-radius:4pt;padding:2.5mm 3mm;background:#fff;break-inside:avoid;display:flex;flex-direction:column;gap:1.5mm}
-.pv-card-name{font-size:8.5pt;font-weight:700;color:#111;line-height:1.25;word-break:break-word}
-.pv-card-img{width:100%;max-height:28mm;object-fit:cover;border-radius:2pt;display:block}
-.pv-card-text{font-size:7.5pt;color:#333;line-height:1.4;white-space:pre-wrap;word-break:break-word}
-.pv-card-notiz{font-size:7pt;color:#666;font-style:italic;border-top:.5pt solid #e0e0e0;padding-top:1mm;word-break:break-word}
+
+/* Schließen-Button — nur auf dem Bildschirm sichtbar */
+.pv-close-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  margin-bottom:6mm;padding:2mm 5mm;
+  background:#f0f0f0;border:1pt solid #ccc;border-radius:5pt;
+  font-size:9pt;cursor:pointer;color:#333;
+}
+@media print{.pv-close-btn{display:none}}
+
+/* Seitenumbruch: nach jeder Sammlung eine neue Seite (außer der letzten) */
+.pv-sammlung+.pv-sammlung{break-before:page;page-break-before:always}
+.pv-sammlung{margin-bottom:6mm}
+.pv-sammlung-titel{font-size:13pt;font-weight:700;border-bottom:2pt solid currentColor;padding-bottom:2mm;margin-bottom:4mm}
+
+/* Mehr Abstand zwischen Gruppen */
+.pv-gruppe-titel{font-size:10pt;font-weight:600;color:#444;margin:7mm 0 2.5mm}
+.pv-gruppe-titel:first-of-type{margin-top:0}
+
+/* 3 Spalten per Flexbox — break-inside:avoid funktioniert in Safaris PDF-Renderer
+   zuverlässiger als bei CSS Grid. min-height stellt Portrait-Proportionen sicher
+   (A4 ~190mm nutzbar → 3 Spalten ≈ 61mm breit → min-height 80mm = Portrait). */
+.pv-grid{display:flex;flex-wrap:wrap;gap:3mm}
+.pv-card{
+  flex:0 0 calc(33.333% - 2mm);width:calc(33.333% - 2mm);
+  border:1pt solid #ddd;border-left:3.5pt solid var(--pv-farbe,#888);
+  border-radius:5pt;padding:3mm 3.5mm;
+  background:#fff;
+  break-inside:avoid;page-break-inside:avoid;
+  display:flex;flex-direction:column;gap:2mm;
+  min-height:80mm;
+}
+.pv-card-name{font-size:9pt;font-weight:700;color:#111;line-height:1.3;word-break:break-word}
+
+/* object-fit:contain verhindert Gesichter anschneiden */
+.pv-card-img{
+  width:100%;height:50mm;
+  object-fit:contain;
+  border-radius:3pt;display:block;
+  background:#f7f7f7;
+}
+.pv-card-text{font-size:8pt;color:#222;line-height:1.45;white-space:pre-wrap;word-break:break-word;flex:1}
+.pv-card-notiz{font-size:7pt;color:#666;font-style:italic;border-top:.5pt solid #e8e8e8;padding-top:1.5mm;word-break:break-word}
 .pv-card-fav{font-size:7pt;color:#b8a000}
-.pv-meta{font-size:7pt;color:#aaa;text-align:right;margin-top:8mm}
+.pv-meta{font-size:7pt;color:#bbb;text-align:right;margin-top:6mm}
 </style>
 </head>
 <body>
+<button class="pv-close-btn" onclick="window.close()">✕ Schließen &amp; zur App</button>
 ${body}
 <script>
 // Warten bis alle Bilder geladen sind, dann drucken
