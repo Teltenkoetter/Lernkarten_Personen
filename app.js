@@ -2411,63 +2411,103 @@ function pvCardHtml(s, farbe) {
 }
 
 async function exportAlsPDF(studExport, exportGruppen, exportSammlungen) {
-  // Sammlungen → Gruppen → Karten strukturieren
-  const getSortierteSamml = () => [...exportSammlungen].sort((a,b) => (a.name||'').localeCompare(b.name||''));
-  const getSortierteSaml  = getSortierteSamml();
-
-  let html = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif">`;
+  const esc   = t => (t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const datum = new Date().toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const sortierteSamml = [...exportSammlungen].sort((a,b) => (a.name||'').localeCompare(b.name||''));
 
-  for (const sam of getSortierteSaml) {
+  let body = '';
+
+  for (const sam of sortierteSamml) {
     const samGruppen = exportGruppen.filter(g => g.sammlungId === sam.id);
     if (!samGruppen.length) continue;
+    const si    = sortierteSamml.indexOf(sam);
+    const farbe = sammlungFarbe(sam, si);
 
-    const si       = getSortierteSaml.indexOf(sam);
-    const farbe    = sammlungFarbe(sam, si);
-
-    html += `<div class="pv-sammlung">`;
-    html += `<div class="pv-sammlung-titel" style="color:${farbe};border-color:${farbe}">${sam.name || 'Sammlung'}</div>`;
-
+    body += `<section class="pv-sammlung">`;
+    body += `<h2 class="pv-sammlung-titel" style="color:${esc(farbe)};border-color:${esc(farbe)}">${esc(sam.name || 'Sammlung')}</h2>`;
     for (const gruppe of samGruppen) {
       const karten = studExport.filter(s => s.gruppeId === gruppe.id);
       if (!karten.length) continue;
-      html += `<div class="pv-gruppe-titel">${gruppe.name || 'Gruppe'}</div>`;
-      html += `<div class="pv-grid">`;
-      for (const s of karten) {
-        html += pvCardHtml(s, farbe);
-      }
-      html += `</div>`;
+      body += `<h3 class="pv-gruppe-titel">${esc(gruppe.name || 'Gruppe')}</h3>`;
+      body += `<div class="pv-grid">`;
+      for (const s of karten) body += pvCardHtml(s, farbe);
+      body += `</div>`;
     }
-    html += `</div>`;
+    body += `</section>`;
   }
 
-  // Karten ohne Sammlung (Favoriten-Export etc.)
-  const sammlIdSet = new Set(exportSammlungen.map(s => s.id));
+  // Karten ohne Sammlung (z.B. Favoriten-Export)
+  const sammlIdSet    = new Set(exportSammlungen.map(s => s.id));
   const orphanGruppen = exportGruppen.filter(g => !sammlIdSet.has(g.sammlungId));
   if (orphanGruppen.length) {
-    html += `<div class="pv-sammlung">`;
-    html += `<div class="pv-sammlung-titel" style="color:#888;border-color:#888">Weitere Karten</div>`;
+    body += `<section class="pv-sammlung">`;
+    body += `<h2 class="pv-sammlung-titel" style="color:#888;border-color:#888">Weitere Karten</h2>`;
     for (const gruppe of orphanGruppen) {
       const karten = studExport.filter(s => s.gruppeId === gruppe.id);
       if (!karten.length) continue;
-      html += `<div class="pv-gruppe-titel">${gruppe.name || 'Gruppe'}</div>`;
-      html += `<div class="pv-grid">`;
-      for (const s of karten) html += pvCardHtml(s, '#888');
-      html += `</div>`;
+      body += `<h3 class="pv-gruppe-titel">${esc(gruppe.name || 'Gruppe')}</h3>`;
+      body += `<div class="pv-grid">`;
+      for (const s of karten) body += pvCardHtml(s, '#888');
+      body += `</div>`;
     }
-    html += `</div>`;
+    body += `</section>`;
   }
 
-  html += `<div class="pv-meta">MemoFix · Exportiert am ${datum} · ${studExport.length} Karten</div>`;
-  html += `</div>`;
+  body += `<p class="pv-meta">MemoFix &middot; ${datum} &middot; ${studExport.length} Karten</p>`;
 
-  const printView = document.getElementById('print-view');
-  printView.innerHTML = html;
-  // Kurz warten, damit Bilder im DOM geladen werden
-  await new Promise(r => setTimeout(r, 120));
-  window.print();
-  // Nach dem Drucken aufräumen
-  printView.innerHTML = '';
+  // Eigenständiges HTML-Dokument mit inline-CSS — komplett isoliert vom App-CSS
+  const fullHtml = `<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MemoFix PDF Export</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#fff;color:#111;padding:8mm}
+@page{size:A4 portrait;margin:12mm 10mm}
+.pv-sammlung{margin-bottom:7mm}
+.pv-sammlung-titel{font-size:13pt;font-weight:700;border-bottom:2pt solid currentColor;padding-bottom:2mm;margin-bottom:3mm}
+.pv-gruppe-titel{font-size:10pt;font-weight:600;color:#444;margin:4mm 0 2mm}
+.pv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm}
+.pv-card{border:1pt solid #ccc;border-left:3pt solid var(--pv-farbe,#888);border-radius:4pt;padding:2.5mm 3mm;background:#fff;break-inside:avoid;display:flex;flex-direction:column;gap:1.5mm}
+.pv-card-name{font-size:8.5pt;font-weight:700;color:#111;line-height:1.25;word-break:break-word}
+.pv-card-img{width:100%;max-height:28mm;object-fit:cover;border-radius:2pt;display:block}
+.pv-card-text{font-size:7.5pt;color:#333;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+.pv-card-notiz{font-size:7pt;color:#666;font-style:italic;border-top:.5pt solid #e0e0e0;padding-top:1mm;word-break:break-word}
+.pv-card-fav{font-size:7pt;color:#b8a000}
+.pv-meta{font-size:7pt;color:#aaa;text-align:right;margin-top:8mm}
+</style>
+</head>
+<body>
+${body}
+<script>
+// Warten bis alle Bilder geladen sind, dann drucken
+window.addEventListener('load', function() {
+  var imgs = document.querySelectorAll('img');
+  var pending = imgs.length;
+  if (pending === 0) { window.print(); return; }
+  function done() { if (--pending <= 0) window.print(); }
+  imgs.forEach(function(img) {
+    if (img.complete) { done(); } else { img.onload = done; img.onerror = done; }
+  });
+});
+<\/script>
+</body>
+</html>`;
+
+  // Blob-URL öffnen (öffnet neues Tab/Fenster, isoliert vom PWA-Kontext)
+  const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const win  = window.open(url, '_blank');
+  if (!win) {
+    // Popup blockiert — Toast und URL aufräumen
+    URL.revokeObjectURL(url);
+    toast('Popups erlauben und nochmal versuchen');
+    return;
+  }
+  // Blob-URL nach 5 Minuten freigeben (Fenster sollte bis dahin geladen sein)
+  setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
 }
 
 // Import Modal
