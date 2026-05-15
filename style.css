@@ -126,6 +126,10 @@ header h1 { font-size: 1rem; letter-spacing: 0.2px; color: var(--text); }
   padding-top: 0.75rem; margin-top: 0.75rem;
   border-top: 1px solid var(--border);
 }
+.modal-meta-build {
+  font-size: 0.68rem;
+  opacity: 0.55;
+}
 
 /* Modal group check list (export) */
 .modal-check-liste { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.25rem; }

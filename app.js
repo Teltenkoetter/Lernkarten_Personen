@@ -2679,6 +2679,23 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 
+// Build-Version automatisch aus SW-Cache-Key lesen und im Hilfe-Modal anzeigen
+if ('caches' in window) {
+  caches.keys().then(keys => {
+    const memoKeys = keys.filter(k => k.startsWith('memofix-'));
+    if (!memoKeys.length) return;
+    // Höchste Versionsnummer wählen (für den Fall dass alter + neuer Cache gleichzeitig existieren)
+    memoKeys.sort((a, b) => {
+      const na = parseInt(a.replace('memofix-v', '')) || 0;
+      const nb = parseInt(b.replace('memofix-v', '')) || 0;
+      return nb - na;
+    });
+    const ver = memoKeys[0].replace('memofix-', '');
+    const el  = document.getElementById('build-version');
+    if (el) el.textContent = `(Build ${ver})`;
+  }).catch(() => {});
+}
+
 // ============================================================
 // TUTORIAL GRUPPE
 // ============================================================
