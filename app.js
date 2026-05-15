@@ -2298,6 +2298,21 @@ document.getElementById('btn-export-start').addEventListener('click', async () =
     .map(el => el.dataset.gid);
   if (!selectedGids.length) { toast('Keine Gruppe ausgewählt'); return; }
 
+  // PDF: Fenster SOFORT öffnen (synchron, direkt beim Klick) — bevor irgendein await folgt,
+  // damit iOS Safari es als Nutzer-Geste akzeptiert und nicht als Popup blockt.
+  const fmt = document.querySelector('.export-fmt-btn.active')?.dataset.fmt || 'datei';
+  let pdfWin = null;
+  if (fmt === 'pdf') {
+    pdfWin = window.open('', '_blank');
+    if (!pdfWin) { toast('Popups erlauben und nochmal versuchen'); return; }
+    // Ladeplatzhalter anzeigen während Daten aufbereitet werden
+    pdfWin.document.write(
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>MemoFix</title></head>' +
+      '<body style="font-family:sans-serif;padding:2rem;color:#666;background:#fff">' +
+      'Wird aufbereitet…</body></html>'
+    );
+  }
+
   // Favoriten + normale Gruppen auflösen (dedup)
   const hasFavoriten  = selectedGids.includes('__favoriten__');
   const normalGids    = selectedGids.filter(g => g !== '__favoriten__');
@@ -2327,10 +2342,9 @@ document.getElementById('btn-export-start').addEventListener('click', async () =
   const exportSammlungen = sammlungen.filter(s => exportSammlIds.has(s.id));
 
   // PDF-Modus?
-  const fmt = document.querySelector('.export-fmt-btn.active')?.dataset.fmt || 'datei';
   if (fmt === 'pdf') {
     document.getElementById('export-modal').classList.add('hidden');
-    await exportAlsPDF(studExport, exportGruppen, exportSammlungen);
+    await exportAlsPDF(studExport, exportGruppen, exportSammlungen, pdfWin);
     return;
   }
 
@@ -2410,7 +2424,7 @@ function pvCardHtml(s, farbe) {
     </div>`;
 }
 
-async function exportAlsPDF(studExport, exportGruppen, exportSammlungen) {
+async function exportAlsPDF(studExport, exportGruppen, exportSammlungen, win) {
   const esc   = t => (t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const datum = new Date().toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
   const sortierteSamml = [...exportSammlungen].sort((a,b) => (a.name||'').localeCompare(b.name||''));
@@ -2496,18 +2510,10 @@ window.addEventListener('load', function() {
 </body>
 </html>`;
 
-  // Blob-URL öffnen (öffnet neues Tab/Fenster, isoliert vom PWA-Kontext)
-  const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const win  = window.open(url, '_blank');
-  if (!win) {
-    // Popup blockiert — Toast und URL aufräumen
-    URL.revokeObjectURL(url);
-    toast('Popups erlauben und nochmal versuchen');
-    return;
-  }
-  // Blob-URL nach 5 Minuten freigeben (Fenster sollte bis dahin geladen sein)
-  setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+  // Bereits offenes Fenster mit fertigem HTML befüllen
+  win.document.open();
+  win.document.write(fullHtml);
+  win.document.close();
 }
 
 // Import Modal
