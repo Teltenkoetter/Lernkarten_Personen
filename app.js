@@ -2424,6 +2424,22 @@ function pvCardHtml(s, farbe) {
     </div>`;
 }
 
+// Baut eine Tabellenzeile mit bis zu 3 Karten — Tabellen-<tr> ist in Safaris PDF-Renderer
+// die zuverlässigste Methode für page-break-inside:avoid (Flex/Grid haben Bugs).
+function pvGridHtml(karten, farbe) {
+  let out = '<table class="pv-table"><tbody>';
+  for (let i = 0; i < karten.length; i += 3) {
+    out += '<tr class="pv-row">';
+    for (let j = 0; j < 3; j++) {
+      const s = karten[i + j];
+      out += s ? `<td class="pv-cell">${pvCardHtml(s, farbe)}</td>`
+               : '<td class="pv-cell pv-cell-empty"></td>';
+    }
+    out += '</tr>';
+  }
+  return out + '</tbody></table>';
+}
+
 async function exportAlsPDF(studExport, exportGruppen, exportSammlungen, win) {
   const esc   = t => (t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const datum = new Date().toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
@@ -2443,9 +2459,7 @@ async function exportAlsPDF(studExport, exportGruppen, exportSammlungen, win) {
       const karten = studExport.filter(s => s.gruppeId === gruppe.id);
       if (!karten.length) continue;
       body += `<h3 class="pv-gruppe-titel">${esc(gruppe.name || 'Gruppe')}</h3>`;
-      body += `<div class="pv-grid">`;
-      for (const s of karten) body += pvCardHtml(s, farbe);
-      body += `</div>`;
+      body += pvGridHtml(karten, farbe);
     }
     body += `</section>`;
   }
@@ -2460,9 +2474,7 @@ async function exportAlsPDF(studExport, exportGruppen, exportSammlungen, win) {
       const karten = studExport.filter(s => s.gruppeId === gruppe.id);
       if (!karten.length) continue;
       body += `<h3 class="pv-gruppe-titel">${esc(gruppe.name || 'Gruppe')}</h3>`;
-      body += `<div class="pv-grid">`;
-      for (const s of karten) body += pvCardHtml(s, '#888');
-      body += `</div>`;
+      body += pvGridHtml(karten, '#888');
     }
     body += `</section>`;
   }
@@ -2490,38 +2502,37 @@ body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#fff;color:
 }
 @media print{.pv-close-btn{display:none}}
 
-/* Seitenumbruch: nach jeder Sammlung eine neue Seite (außer der letzten) */
+/* Seitenumbruch nach jeder Sammlung */
 .pv-sammlung+.pv-sammlung{break-before:page;page-break-before:always}
 .pv-sammlung{margin-bottom:6mm}
 .pv-sammlung-titel{font-size:13pt;font-weight:700;border-bottom:2pt solid currentColor;padding-bottom:2mm;margin-bottom:4mm}
 
 /* Mehr Abstand zwischen Gruppen */
 .pv-gruppe-titel{font-size:10pt;font-weight:600;color:#444;margin:7mm 0 2.5mm}
-.pv-gruppe-titel:first-of-type{margin-top:0}
 
-/* 3 Spalten per Flexbox — break-inside:avoid funktioniert in Safaris PDF-Renderer
-   zuverlässiger als bei CSS Grid. min-height stellt Portrait-Proportionen sicher
-   (A4 ~190mm nutzbar → 3 Spalten ≈ 61mm breit → min-height 80mm = Portrait). */
-.pv-grid{display:flex;flex-wrap:wrap;gap:3mm}
+/* Tabellen-Layout: page-break-inside:avoid auf <tr> ist in Safari zuverlässiger als flex/grid */
+.pv-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.pv-row{break-inside:avoid;page-break-inside:avoid}
+.pv-cell{width:33.333%;vertical-align:top;padding:1.5mm}
+.pv-cell-empty{border:none}
+
+/* Karte: Höhe richtet sich nach Inhalt — kein min-height */
 .pv-card{
-  flex:0 0 calc(33.333% - 2mm);width:calc(33.333% - 2mm);
   border:1pt solid #ddd;border-left:3.5pt solid var(--pv-farbe,#888);
   border-radius:5pt;padding:3mm 3.5mm;
   background:#fff;
-  break-inside:avoid;page-break-inside:avoid;
   display:flex;flex-direction:column;gap:2mm;
-  min-height:80mm;
 }
 .pv-card-name{font-size:9pt;font-weight:700;color:#111;line-height:1.3;word-break:break-word}
 
-/* object-fit:contain verhindert Gesichter anschneiden */
+/* object-fit:contain — kein Anschnitt von Gesichtern */
 .pv-card-img{
   width:100%;height:50mm;
   object-fit:contain;
   border-radius:3pt;display:block;
   background:#f7f7f7;
 }
-.pv-card-text{font-size:8pt;color:#222;line-height:1.45;white-space:pre-wrap;word-break:break-word;flex:1}
+.pv-card-text{font-size:8pt;color:#222;line-height:1.45;white-space:pre-wrap;word-break:break-word}
 .pv-card-notiz{font-size:7pt;color:#666;font-style:italic;border-top:.5pt solid #e8e8e8;padding-top:1.5mm;word-break:break-word}
 .pv-card-fav{font-size:7pt;color:#b8a000}
 .pv-meta{font-size:7pt;color:#bbb;text-align:right;margin-top:6mm}
