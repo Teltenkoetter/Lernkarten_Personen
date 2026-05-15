@@ -2639,22 +2639,33 @@ document.getElementById('btn-import-start').addEventListener('click', async () =
         const targetId = existing ? existing.id : importGruppe.id;
         if (!existing) await dbPut('gruppen', importGruppe);
 
-        // Bestehende Karten dieser Gruppe ersetzen
-        const toRemove = studenten.filter(s => s.gruppeId === targetId);
-        for (const s of toRemove) { await dbDelete('studenten', s.id); revokeUrl(s.id); }
-
-        // Importierte Karten einfügen
+        // Hinzufügen: bestehende Karten NICHT löschen — nur neue Karten ergänzen.
+        // Duplikat-Erkennung per Kartenname: gleicher Name in der Zielgruppe → überspringen.
+        const vorhandeneNamen = new Set(
+          studenten.filter(s => s.gruppeId === targetId).map(s => (s.name || '').trim().toLowerCase())
+        );
         const importStudents = importDatenBuffer.studenten.filter(s => s.gruppeId === importGruppe.id);
-        for (const s of importStudents)
+        let hinzugefuegt = 0;
+        for (const s of importStudents) {
+          if (vorhandeneNamen.has((s.name || '').trim().toLowerCase())) continue; // bereits vorhanden
           await dbPut('studenten', { ...s, gruppeId: targetId, foto: (s.modus === 'text' || !s.foto) ? null : dataUrlToBlob(s.foto) });
+          hinzugefuegt++;
+        }
       }
     }
+    const vorher = studenten.length;
     await ladeAlles();
     renderVerwaltung();
     renderLernAuswahl();
     document.getElementById('import-modal').classList.add('hidden');
     importDatenBuffer = null;
-    toast(`Import erfolgreich – ${studenten.length} Karten geladen`);
+    const neu = studenten.length - vorher;
+    const toastText = modus === 'ersetzen'
+      ? `Import erfolgreich – ${studenten.length} Karten geladen`
+      : neu > 0
+        ? `${neu} neue Karte${neu !== 1 ? 'n' : ''} hinzugefügt`
+        : 'Alle Karten bereits vorhanden – nichts hinzugefügt';
+    toast(toastText);
   } catch (err) {
     toast('Fehler beim Import: ' + err.message);
   }
