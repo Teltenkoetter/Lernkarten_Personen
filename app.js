@@ -89,16 +89,14 @@ function dbClear(store) {
 // ============================================================
 
 const FARB_PALETTE = [
-  '#c8c8c8', // silber-grau     (neutral)
-  '#c49090', // altrosa          (0°)
-  '#c4a87a', // amber/sand       (38°)
-  '#aec47a', // gelbgrün/limette (78°)
-  '#7ac49a', // salbei-grün      (145°)
-  '#7ab8c4', // stahl-teal       (195°)
-  '#7a90c4', // stahlblau        (225°)
-  '#a07ac4', // lavendel         (270°)
-  '#c47ab0', // pink-mauve       (310°)
-  '#9a8472', // warm taupe       (dunkel/neutral)
+  '#b4b4b4', // grau        (neutral)
+  '#c48888', // rose-rot    (  0°)
+  '#c4a868', // amber       ( 48°)
+  '#a4c468', // limette     ( 90°)
+  '#68c498', // minze       (150°)
+  '#68a4c4', // himmelblau  (205°)
+  '#9068c4', // violett     (260°)
+  '#c468b0', // pink        (312°)
 ];
 
 function hexToRgba(hex, alpha) {
