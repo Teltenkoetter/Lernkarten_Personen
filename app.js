@@ -1052,12 +1052,15 @@ async function renderStatistik() {
 
 async function speichereSitzung() {
   if (!lernKarten.length) return;
+  const answeredCount = gewusst + nichtGewusst;
+  // Reine Timer-Durchläufe ohne manuelle Bewertung nicht speichern —
+  // sie würden als 0% in der Statistik erscheinen und den Fortschritt verzerren.
+  if (answeredCount === 0) return;
   const details = lernKarten.map(s => ({
     name: s.name,
     status: gewusstIds.has(s.id) ? 'gewusst' : nichtGewusstIds.has(s.id) ? 'nachgeschaut' : 'übersprungen'
   }));
-  const answeredCount = gewusst + nichtGewusst;
-  const score = answeredCount > 0 ? Math.round((gewusst / answeredCount) * 100) : 0;
+  const score = Math.round((gewusst / answeredCount) * 100);
   // Beteiligte Gruppen ermitteln
   const gidsInSession = [...new Set(lernKarten.map(s => s.gruppeId).filter(Boolean))];
   const gruppenNamen  = gidsInSession
