@@ -89,25 +89,16 @@ function dbClear(store) {
 // ============================================================
 
 const FARB_PALETTE = [
-  // Neutral
-  '#d6d6d6', // hell-grau (fast weiß)
-  '#8e8e8e', // mittel-grau
-  // Helle gedämpfte Töne (~65 % Helligkeit, 15–20 % Sättigung)
-  '#c4a8aa', // helles rose
-  '#c4b898', // helles sand
-  '#aac4a8', // helles salbei
-  '#a8b6c4', // helles stahl-blau
-  '#b2a8c4', // helles lavendel
-  '#a8c2be', // helles teal
-  '#c2baa0', // helles taupe
-  // Dunkle gedämpfte Töne (~44 % Helligkeit, 15–20 % Sättigung)
-  '#7b677e', // mauve
-  '#7e676d', // rose
-  '#67697e', // slate-blau
-  '#677e7d', // teal
-  '#677e68', // salbei
-  '#7e7e67', // olive
-  '#7a6e60', // dunkles taupe
+  '#c8c8c8', // silber-grau     (neutral)
+  '#c49090', // altrosa          (0°)
+  '#c4a87a', // amber/sand       (38°)
+  '#aec47a', // gelbgrün/limette (78°)
+  '#7ac49a', // salbei-grün      (145°)
+  '#7ab8c4', // stahl-teal       (195°)
+  '#7a90c4', // stahlblau        (225°)
+  '#a07ac4', // lavendel         (270°)
+  '#c47ab0', // pink-mauve       (310°)
+  '#9a8472', // warm taupe       (dunkel/neutral)
 ];
 
 function hexToRgba(hex, alpha) {
@@ -127,7 +118,7 @@ function sammlungFarbe(sam, idx = 0) {
 }
 
 function sammlungStyle(farbe) {
-  return `--sam-farbe:${farbe};--sam-farbe-tint:${hexToRgba(farbe, 0.07)}`;
+  return `--sam-farbe:${farbe};--sam-farbe-tint:${hexToRgba(farbe, 0.13)}`;
 }
 
 // ============================================================
@@ -1112,6 +1103,14 @@ function zeigeKarte() {
   const gName       = gruppe ? gruppe.name : '';
   const kartenModus = s.modus || 'foto';
   const total       = lernKarten.length;
+
+  // Sammlungsfarbe auf Lernkarte anwenden
+  const sammlung    = gruppe ? sammlungen.find(sm => sm.id === gruppe.sammlungId) : null;
+  const si          = sammlung ? getSortierteSammlungen().indexOf(sammlung) : 0;
+  const kartefarbe  = sammlungFarbe(sammlung || {}, si);
+  const lernkarte   = document.getElementById('lernkarte');
+  lernkarte.style.setProperty('--sam-farbe', kartefarbe);
+  lernkarte.style.setProperty('--sam-farbe-tint', hexToRgba(kartefarbe, 0.13));
 
   document.getElementById('lern-name-text').textContent         = s.name;
   document.getElementById('lern-gruppe-text').textContent       = gName;
@@ -2281,6 +2280,19 @@ document.getElementById('btn-export-keine').addEventListener('click', () => {
   });
 });
 
+// Format-Toggle (Datei / PDF)
+document.querySelectorAll('.export-fmt-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.export-fmt-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const fmt = btn.dataset.fmt;
+    document.getElementById('export-ios-hinweis').classList.toggle('hidden', fmt !== 'datei');
+    document.getElementById('export-pdf-hinweis').classList.toggle('hidden', fmt !== 'pdf');
+    document.getElementById('btn-export-start').textContent =
+      fmt === 'pdf' ? '🖨 PDF drucken' : 'Exportieren';
+  });
+});
+
 document.getElementById('btn-export-start').addEventListener('click', async () => {
   const selectedGids = [...document.querySelectorAll('#export-gruppen-liste .gruppe-check-item.selected')]
     .map(el => el.dataset.gid);
@@ -2313,6 +2325,15 @@ document.getElementById('btn-export-start').addEventListener('click', async () =
 
   const exportSammlIds   = new Set(exportGruppen.map(g => g.sammlungId).filter(Boolean));
   const exportSammlungen = sammlungen.filter(s => exportSammlIds.has(s.id));
+
+  // PDF-Modus?
+  const fmt = document.querySelector('.export-fmt-btn.active')?.dataset.fmt || 'datei';
+  if (fmt === 'pdf') {
+    document.getElementById('export-modal').classList.add('hidden');
+    await exportAlsPDF(studExport, exportGruppen, exportSammlungen);
+    return;
+  }
+
   const payload = {
     version: 2, exportiert: new Date().toISOString(),
     sammlungen: exportSammlungen, gruppen: exportGruppen, studenten: studExport
@@ -2367,6 +2388,87 @@ document.getElementById('btn-export-start').addEventListener('click', async () =
     : `${exportGruppen.length} Gruppe${exportGruppen.length !== 1 ? 'n' : ''} exportiert`;
   toast(toastMsg);
 });
+
+// ── PDF EXPORT ─────────────────────────────────────────────
+
+function pvCardHtml(s, farbe) {
+  const esc = t => (t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const fotoHtml = s.foto
+    ? `<img class="pv-card-img" src="${s.foto}" alt="">`
+    : '';
+  const textHtml = (s.modus === 'text' && s.text)
+    ? `<div class="pv-card-text">${esc(s.text)}</div>`
+    : '';
+  const notizHtml = s.notiz
+    ? `<div class="pv-card-notiz">${esc(s.notiz)}</div>`
+    : '';
+  const favHtml = s.favorit ? `<div class="pv-card-fav">★ Favorit</div>` : '';
+  return `
+    <div class="pv-card" style="--pv-farbe:${esc(farbe)}">
+      <div class="pv-card-name">${esc(s.name)}</div>
+      ${fotoHtml}${textHtml}${notizHtml}${favHtml}
+    </div>`;
+}
+
+async function exportAlsPDF(studExport, exportGruppen, exportSammlungen) {
+  // Sammlungen → Gruppen → Karten strukturieren
+  const getSortierteSamml = () => [...exportSammlungen].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  const getSortierteSaml  = getSortierteSamml();
+
+  let html = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif">`;
+  const datum = new Date().toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+  for (const sam of getSortierteSaml) {
+    const samGruppen = exportGruppen.filter(g => g.sammlungId === sam.id);
+    if (!samGruppen.length) continue;
+
+    const si       = getSortierteSaml.indexOf(sam);
+    const farbe    = sammlungFarbe(sam, si);
+
+    html += `<div class="pv-sammlung">`;
+    html += `<div class="pv-sammlung-titel" style="color:${farbe};border-color:${farbe}">${sam.name || 'Sammlung'}</div>`;
+
+    for (const gruppe of samGruppen) {
+      const karten = studExport.filter(s => s.gruppeId === gruppe.id);
+      if (!karten.length) continue;
+      html += `<div class="pv-gruppe-titel">${gruppe.name || 'Gruppe'}</div>`;
+      html += `<div class="pv-grid">`;
+      for (const s of karten) {
+        html += pvCardHtml(s, farbe);
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Karten ohne Sammlung (Favoriten-Export etc.)
+  const sammlIdSet = new Set(exportSammlungen.map(s => s.id));
+  const orphanGruppen = exportGruppen.filter(g => !sammlIdSet.has(g.sammlungId));
+  if (orphanGruppen.length) {
+    html += `<div class="pv-sammlung">`;
+    html += `<div class="pv-sammlung-titel" style="color:#888;border-color:#888">Weitere Karten</div>`;
+    for (const gruppe of orphanGruppen) {
+      const karten = studExport.filter(s => s.gruppeId === gruppe.id);
+      if (!karten.length) continue;
+      html += `<div class="pv-gruppe-titel">${gruppe.name || 'Gruppe'}</div>`;
+      html += `<div class="pv-grid">`;
+      for (const s of karten) html += pvCardHtml(s, '#888');
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `<div class="pv-meta">MemoFix · Exportiert am ${datum} · ${studExport.length} Karten</div>`;
+  html += `</div>`;
+
+  const printView = document.getElementById('print-view');
+  printView.innerHTML = html;
+  // Kurz warten, damit Bilder im DOM geladen werden
+  await new Promise(r => setTimeout(r, 120));
+  window.print();
+  // Nach dem Drucken aufräumen
+  printView.innerHTML = '';
+}
 
 // Import Modal
 document.getElementById('btn-import-trigger').addEventListener('click', () =>

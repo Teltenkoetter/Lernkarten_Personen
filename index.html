@@ -220,9 +220,16 @@
           <button id="btn-export-alle" class="btn-secondary">Alle</button>
           <button id="btn-export-keine" class="btn-secondary">Keine</button>
         </div>
-        <button id="btn-export-start" class="btn-primary">Exportieren</button>
+        <div class="export-format-toggle">
+          <button class="export-fmt-btn active" data-fmt="datei">📦 Datei</button>
+          <button class="export-fmt-btn" data-fmt="pdf">🖨 PDF</button>
+        </div>
+        <button id="btn-export-start" class="btn-primary" style="margin-top:0.75rem">Exportieren</button>
         <p id="export-ios-hinweis" class="modal-hint hidden" style="margin-top:0.75rem;font-size:0.78rem;line-height:1.5">
           📱 <strong>iPhone / iPad:</strong> Die Datei wird über das Teilen-Menü geöffnet. Tippe dort auf <em>„In Dateien sichern"</em>, um den Speicherort selbst zu wählen.
+        </p>
+        <p id="export-pdf-hinweis" class="modal-hint hidden" style="margin-top:0.75rem;font-size:0.78rem;line-height:1.5">
+          🖨 Im Druckdialog <em>„Als PDF sichern"</em> wählen · <strong>iPhone:</strong> Teilen-Symbol → „In Dateien sichern"
         </p>
       </div>
     </div>
@@ -591,6 +598,10 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
+
+  <!-- ── PRINT VIEW (nur für PDF-Export) ───────────────── -->
+  <div id="print-view"></div>
+
   <script src="app.js?v=56"></script>
 </body>
 </html>
