@@ -1275,6 +1275,18 @@ function starteSession(karten, shuffle = true) {
     b.classList.toggle('active', autoRepeat)
   );
   if (timerSekunden) {
+    // Sammlung-Farbe sofort setzen, damit der Hintergrund schon während
+    // des 3-2-1-Countdowns in der richtigen Farbe erscheint
+    if (lernKarten.length) {
+      const ersteKarte = lernKarten[lernIndex] || lernKarten[0];
+      const g0  = gruppen.find(g => g.id === ersteKarte.gruppeId);
+      const sm0 = g0 ? sammlungen.find(s => s.id === g0.sammlungId) : null;
+      const si0 = sm0 ? getSortierteSammlungen().indexOf(sm0) : 0;
+      const f0  = sammlungFarbe(sm0 || {}, si0);
+      const lk  = document.getElementById('lernkarte');
+      lk.style.setProperty('--sam-farbe', f0);
+      lk.style.setProperty('--sam-farbe-tint', hexToRgba(f0, 0.13));
+    }
     // Countdown 3-2-1 vor dem ersten Timer-Start
     starteCountdown(() => zeigeKarte());
   } else {

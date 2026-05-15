@@ -725,6 +725,9 @@ textarea.input-notiz::placeholder { color: var(--muted); }
   opacity: 0.9;
   pointer-events: none;
   z-index: 20;
+  /* Graue Außenkontur — sichtbar auf hellem und dunklem Hintergrund */
+  -webkit-text-stroke: 3px rgba(90, 90, 90, 0.55);
+  paint-order: stroke fill;
   text-shadow: 0 0 40px rgba(106,143,255,0.4);
   animation: countdown-pulse 1s ease-out;
 }
