@@ -2516,6 +2516,12 @@ body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#fff;color:
 .pv-cell{width:33.333%;vertical-align:top;padding:1.5mm}
 .pv-cell-empty{border:none}
 
+/* Screen-Preview: Zeilen als Flex → Karten nehmen nur ihre eigene Inhaltshöhe */
+@media screen{
+  .pv-row{display:flex;align-items:flex-start;margin-bottom:3mm}
+  .pv-cell{display:block;flex:0 0 33.333%;box-sizing:border-box}
+}
+
 /* Karte: Höhe richtet sich nach Inhalt — kein min-height */
 .pv-card{
   border:1pt solid #ddd;border-left:3.5pt solid var(--pv-farbe,#888);
