@@ -288,7 +288,8 @@ select option { background: var(--surface2); color: var(--text); }
   padding: 0.3rem 0.5rem; border-radius: 6px;
   white-space: nowrap;
 }
-.btn-text:active { background: rgba(255,255,255,0.05); color: var(--text); }
+.btn-text:active  { background: rgba(255,255,255,0.05); color: var(--text); }
+.btn-text.active  { color: var(--text); }
 
 /* ── MODUS CHIPS (Foto / Text) ─────────────────────── */
 .karten-modus-chips {

@@ -1367,10 +1367,27 @@ async function zeigeEnde() {
   if (nachBtn) nachBtn.classList.toggle('hidden', nichtGewusst === 0);
 }
 
+let lernKartenOriginal = []; // unsortierte Ursprungsreihenfolge
+let lernIstGemischt    = true;
+
+function aktualisiereMischenBtn() {
+  const btn = document.getElementById('btn-mischen');
+  if (lernIstGemischt) {
+    btn.textContent = '⇄ Gemischt';
+    btn.classList.add('active');
+  } else {
+    btn.textContent = '↕ Sortiert';
+    btn.classList.remove('active');
+  }
+}
+
 function starteSession(karten, shuffle = true) {
   stoppeAutoTimer();
-  lernKarten   = shuffle ? mischen([...karten]) : [...karten];
-  document.getElementById('btn-mischen').style.visibility = shuffle ? '' : 'hidden';
+  lernKartenOriginal = [...karten];
+  lernIstGemischt    = shuffle;
+  lernKarten         = shuffle ? mischen([...karten]) : [...karten];
+  document.getElementById('btn-mischen').style.visibility = '';
+  aktualisiereMischenBtn();
   lernIndex    = 0;
   gewusst      = 0;
   nichtGewusst = 0;
@@ -2318,7 +2335,18 @@ document.getElementById('btn-zurueck').addEventListener('click', () => {
 });
 
 document.getElementById('btn-mischen').addEventListener('click', () => {
-  mischen(lernKarten); lernIndex = 0; zeigeKarte(); toast('Karten gemischt');
+  lernIstGemischt = !lernIstGemischt;
+  if (lernIstGemischt) {
+    mischen(lernKarten);
+    toast('Karten gemischt');
+  } else {
+    // Ursprungsreihenfolge wiederherstellen
+    lernKarten = [...lernKartenOriginal];
+    toast('Reihenfolge wiederhergestellt');
+  }
+  lernIndex = 0;
+  aktualisiereMischenBtn();
+  zeigeKarte();
 });
 
 // Toggle ✓ ↔ ✗ wenn auf Feedback-Symbol geklickt wird
