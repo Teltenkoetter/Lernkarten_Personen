@@ -1432,10 +1432,12 @@ function starteSession(karten, shuffle = true) {
   document.getElementById('btn-mischen').style.visibility = '';
   aktualisiereMischenBtn();
   if (shuffle) {
-    const btnM = document.getElementById('btn-mischen');
-    btnM.classList.remove('btn-wackeln');
-    void btnM.offsetWidth; // reflow um Animation neu zu starten
-    btnM.classList.add('btn-wackeln');
+    setTimeout(() => {
+      const btnM = document.getElementById('btn-mischen');
+      btnM.classList.remove('btn-wackeln');
+      void btnM.offsetWidth;
+      btnM.classList.add('btn-wackeln');
+    }, 60); // kurz warten bis DOM sichtbar ist
   }
 
   // Timer-Buttons & Autorepeat synchronisieren
