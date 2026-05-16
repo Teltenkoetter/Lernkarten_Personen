@@ -63,11 +63,23 @@
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">↔️</span>
-              <div class="anleitung-text"><strong>Pfeile</strong> — Karten ohne Wertung vor- und zurückblättern</div>
+              <div class="anleitung-text"><strong>Pfeile / Wischen</strong> — Karten ohne Wertung vor- und zurückblättern · links/rechts wischen hat denselben Effekt</div>
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">💬</span>
               <div class="anleitung-text"><strong>Notiz</strong> — erscheint beim Aufdecken als Zusatzinfo</div>
+            </div>
+            <div class="anleitung-zeile">
+              <span class="anleitung-icon">⏱</span>
+              <div class="anleitung-text"><strong>Auto-Timer</strong> — 3 · 5 · 8 · 12 s wählen: Karte dreht sich automatisch um, danach geht es zur nächsten · Timer-Durchläufe ohne Bewertung zählen nicht in die Statistik</div>
+            </div>
+            <div class="anleitung-zeile">
+              <span class="anleitung-icon">🔁</span>
+              <div class="anleitung-text"><strong>Autorepeat</strong> — nach dem letzten Bild startet die Runde automatisch neu</div>
+            </div>
+            <div class="anleitung-zeile">
+              <span class="anleitung-icon">⭐</span>
+              <div class="anleitung-text"><strong>Favoriten</strong> — Stern antippen markiert eine Karte als Favorit · unter SICHERUNG gezielt als Favoriten-Gruppe exportieren</div>
             </div>
           </div>
         </div>
@@ -107,6 +119,18 @@
               <span class="anleitung-icon">📋</span>
               <div class="anleitung-text"><strong>Kopieren</strong> — Karte in eine andere Gruppe duplizieren (✏️ öffnet Bearbeiten-Modal)</div>
             </div>
+            <div class="anleitung-zeile">
+              <span class="anleitung-icon">🎨</span>
+              <div class="anleitung-text"><strong>Sammlungsfarbe</strong> — Farbpunkt neben dem Sammlungsnamen antippen · Farbe erscheint als Streifen links und als Kartenhintergrund im Lernmodus</div>
+            </div>
+            <div class="anleitung-zeile">
+              <span class="anleitung-icon">🔗</span>
+              <div class="anleitung-text"><strong>Links</strong> — beim Bearbeiten einer Karte Links hinzufügen (z.&nbsp;B. Wikipedia, YouTube) · erscheinen beim Aufdecken als tippbare Verweise</div>
+            </div>
+            <div class="anleitung-zeile">
+              <span class="anleitung-icon">💬</span>
+              <div class="anleitung-text"><strong>Notiz</strong> — kurze Zusatzinfo pro Karte (max. 250 Zeichen) · wird beim Aufdecken angezeigt</div>
+            </div>
           </div>
         </div>
         <div class="modal-divider"></div>
@@ -119,7 +143,11 @@
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">📤</span>
-              <div class="anleitung-text"><strong>Exportieren</strong> — einzelne Gruppen oder alles als Datei sichern und teilen · <strong>iPhone:</strong> Teilen-Menü → „In Dateien sichern"</div>
+              <div class="anleitung-text"><strong>Exportieren als Datei</strong> — einzelne Gruppen oder alles sichern und teilen · <strong>iPhone:</strong> Teilen-Menü → „In Dateien sichern"</div>
+            </div>
+            <div class="anleitung-zeile">
+              <span class="anleitung-icon">🖨</span>
+              <div class="anleitung-text"><strong>Exportieren als PDF</strong> — unter SICHERUNG Gruppen wählen, Format „PDF" wählen · öffnet Druckansicht mit allen Karten · im Druckdialog „Als PDF sichern" wählen</div>
             </div>
             <div class="anleitung-zeile">
               <span class="anleitung-icon">📥</span>
@@ -273,7 +301,7 @@
           <button id="btn-toggle-alle-gruppen" class="btn-gruppen-toggle">Alle öffnen</button>
         </div>
         <div class="karten-filter">
-          <input type="text" id="input-karten-suche" placeholder="🔍 Namen suchen…" class="karten-suche">
+          <input type="text" id="input-karten-suche" placeholder="🔍 Karten suchen…" class="karten-suche">
           <select id="select-karten-sort" class="karten-sort">
             <option value="neu">Neueste zuerst</option>
             <option value="az">A → Z</option>
@@ -492,7 +520,7 @@
       </div>
 
       <div class="card">
-        <div class="card-header"><h2>Schwierigste Namen</h2></div>
+        <div class="card-header"><h2>Schwierigste Karten</h2></div>
         <div id="schwierigste-namen"></div>
         <p id="keine-schwierig-hinweis" class="hinweis">Noch keine Daten vorhanden.</p>
         <button id="btn-schwaeche-ueben" class="btn-schwaeche hidden">⟳ Schwächste Karten jetzt üben</button>
