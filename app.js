@@ -277,6 +277,22 @@ const answeredIds     = new Set();
 const gewusstIds      = new Set();
 const nichtGewusstIds = new Set();
 
+// ── WAKE LOCK (Bildschirm an lassen während Timer-Session) ───
+let wakeLock = null;
+
+async function erwerbeWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    if (wakeLock) return; // bereits aktiv
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (_) {}
+}
+
+function gebeWakeLockFrei() {
+  if (wakeLock) { wakeLock.release(); wakeLock = null; }
+}
+
 // ── AUTO-TIMER & AUTOREPEAT ──────────────────────────────────
 let timerSekunden  = parseInt(localStorage.getItem('lernTimer') || '0');
 let timerHandle    = null;
@@ -1349,6 +1365,7 @@ function naechsteKarteOderEnde() {
 
 async function zeigeEnde() {
   stoppeAutoTimer();
+  gebeWakeLockFrei();
   await speichereSitzung();
   if (autoRepeat) {
     const pause = timerSekunden ? 600 : 1800;
@@ -1406,6 +1423,7 @@ function starteSession(karten, shuffle = true) {
     b.classList.toggle('active', autoRepeat)
   );
   if (timerSekunden) {
+    erwerbeWakeLock();
     // Sammlung-Farbe sofort setzen, damit der Hintergrund schon während
     // des 3-2-1-Countdowns in der richtigen Farbe erscheint
     if (lernKarten.length) {
@@ -1510,6 +1528,7 @@ function openKarteEditModal(studentId, mode) {
 // ============================================================
 
 function showView(name) {
+  if (name !== 'lernen') gebeWakeLockFrei(); // Lern-View verlassen → Bildschirmsperre wieder aktiv
   ['verwaltung', 'lernen', 'statistik', 'sicherung'].forEach(v =>
     document.getElementById(`view-${v}`).classList.toggle('hidden', v !== name));
   document.querySelectorAll('.nav-item').forEach(b =>
@@ -3146,7 +3165,9 @@ document.addEventListener('visibilitychange', async () => {
   if (!sessionAktiv || !timerSekunden) return;
   if (document.hidden) {
     stoppeAutoTimer();
+    // Wake Lock wird vom Browser automatisch freigegeben bei Hintergrund
   } else {
     if (!nameVisible) starteAutoTimer();
+    erwerbeWakeLock(); // Wake Lock nach Rückkehr wieder anfordern
   }
 });
