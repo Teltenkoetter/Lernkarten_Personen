@@ -177,22 +177,38 @@ function extrahiereYoutubeId(input) {
 }
 
 async function ladeVideoTitel(videoId) {
+  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  // noembed.com: CORS-freundlicher oEmbed-Proxy
   try {
-    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    const url = `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`;
-    const r = await fetch(url);
-    if (!r.ok) return null;
-    const data = await r.json();
-    return data.title || null;
-  } catch (_) { return null; }
+    const r = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(watchUrl)}`);
+    if (r.ok) {
+      const data = await r.json();
+      if (data.title && !data.error) return data.title;
+    }
+  } catch (_) {}
+  // Fallback: YouTube direkt
+  try {
+    const r = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`);
+    if (r.ok) {
+      const data = await r.json();
+      if (data.title) return data.title;
+    }
+  } catch (_) {}
+  return null;
 }
 
 function showVideo(elId, s) {
   const el = document.getElementById(elId);
   if (!el) return;
   if (!s?.videoId) { el.classList.add('hidden'); el.innerHTML = ''; return; }
-  const label = s.videoTitel ? esc(s.videoTitel) : 'Video ansehen';
-  el.innerHTML = `<button class="video-play-btn" data-videoid="${esc(s.videoId)}" data-videotitel="${esc(s.videoTitel || '')}"><span class="video-play-btn-icon">▶</span>${label}</button>`;
+  if (s.videoTitel) {
+    // Embedding erlaubt → Inline-Player
+    el.innerHTML = `<button class="video-play-btn" data-videoid="${esc(s.videoId)}" data-videotitel="${esc(s.videoTitel)}"><span class="video-play-btn-icon">▶</span>${esc(s.videoTitel)}</button>`;
+  } else {
+    // Embedding gesperrt → Link zu YouTube
+    const ytUrl = `https://www.youtube.com/watch?v=${esc(s.videoId)}`;
+    el.innerHTML = `<a href="${ytUrl}" target="_blank" rel="noopener noreferrer" class="video-play-btn video-play-btn-ext"><span class="video-play-btn-icon">▶</span>Auf YouTube öffnen</a>`;
+  }
   el.classList.remove('hidden');
 }
 
@@ -2051,7 +2067,7 @@ document.getElementById('input-video').addEventListener('blur', async () => {
   status.textContent = 'Titel wird geladen…'; status.className = 'video-input-status laden';
   const titel = await ladeVideoTitel(id);
   if (titel) { status.textContent = `✓ ${titel}`; status.className = 'video-input-status ok'; }
-  else       { status.textContent = 'Video-ID gültig (Titel nicht verfügbar)'; status.className = 'video-input-status ok'; }
+  else       { status.textContent = '↗ Embedding gesperrt — wird als YouTube-Link gespeichert'; status.className = 'video-input-status laden'; }
 });
 
 // Blur-Validierung: Video-Feld im Edit-Modal
@@ -2065,7 +2081,7 @@ document.getElementById('karte-edit-video').addEventListener('blur', async () =>
   status.textContent = 'Titel wird geladen…'; status.className = 'video-input-status laden';
   const titel = await ladeVideoTitel(id);
   if (titel) { status.textContent = `✓ ${titel}`; status.className = 'video-input-status ok'; }
-  else       { status.textContent = 'Video-ID gültig (Titel nicht verfügbar)'; status.className = 'video-input-status ok'; }
+  else       { status.textContent = '↗ Embedding gesperrt — wird als YouTube-Link gespeichert'; status.className = 'video-input-status laden'; }
 });
 
 // Overlay: Swipe-Navigation + Tippen zum Schließen
@@ -2091,12 +2107,13 @@ document.getElementById('karte-edit-video').addEventListener('blur', async () =>
     const dy = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       detailNavigate(dx < 0 ? 1 : -1);
-    } else if (!touchMoved) {
+    } else if (!touchMoved && !e.target.closest?.('.video-play-btn')) {
       overlay.classList.add('hidden');
     }
   }, { passive: true });
 
-  overlay.addEventListener('click', () => {
+  overlay.addEventListener('click', e => {
+    if (e.target.closest('.video-play-btn')) return;
     if (!('ontouchstart' in window)) overlay.classList.add('hidden');
   });
 })();
