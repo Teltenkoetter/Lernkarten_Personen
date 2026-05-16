@@ -215,6 +215,11 @@
           <label for="karte-edit-links">Links <span class="label-optional">(optional, eine URL pro Zeile)</span></label>
           <textarea id="karte-edit-links" class="input-notiz" rows="2" maxlength="1000" placeholder="https://…"></textarea>
         </div>
+        <div class="form-group">
+          <label for="karte-edit-video">YouTube <span class="label-optional">(optional — Video-ID oder URL)</span></label>
+          <input type="text" id="karte-edit-video" class="input-video" placeholder="z.B. KNDU2hgeLlc oder https://youtu.be/…" autocomplete="off" autocorrect="off" spellcheck="false">
+          <span id="karte-edit-video-status" class="video-input-status"></span>
+        </div>
         <button id="btn-karte-edit-save" class="btn-primary">Speichern</button>
       </div>
     </div>
@@ -359,6 +364,11 @@
             <label for="input-links">Links <span class="label-optional">(optional, eine URL pro Zeile)</span></label>
             <textarea id="input-links" class="input-notiz" rows="2" maxlength="1000" placeholder="https://…"></textarea>
           </div>
+          <div class="form-group">
+            <label for="input-video">YouTube <span class="label-optional">(optional — Video-ID oder URL)</span></label>
+            <input type="text" id="input-video" class="input-video" placeholder="z.B. KNDU2hgeLlc oder https://youtu.be/…" autocomplete="off" autocorrect="off" spellcheck="false">
+            <span id="input-video-status" class="video-input-status"></span>
+          </div>
           <button type="submit" id="btn-karte-speichern" class="btn-primary">Karte speichern</button>
         </form>
       </div>
@@ -441,6 +451,7 @@
           </div>
         </div>
         <div id="lern-card-links" class="lern-card-links hidden"></div>
+        <div id="lern-card-video" class="lern-card-video hidden"></div>
         <div id="lern-swipe-hint" class="lern-swipe-hint hidden">
           <div class="lern-swipe-hint-inner">
             <span class="lern-swipe-arrow">←</span>
@@ -629,6 +640,17 @@
 
   <!-- ── PRINT VIEW (nur für PDF-Export) ───────────────── -->
   <div id="print-view"></div>
+
+  <!-- ── VIDEO OVERLAY ─────────────────────────────────── -->
+  <div id="video-overlay" class="video-overlay hidden" role="dialog" aria-modal="true">
+    <button id="btn-video-close" class="video-overlay-close" aria-label="Video schließen">✕</button>
+    <div class="video-iframe-wrap">
+      <iframe id="video-iframe" src="" allowfullscreen
+        allow="autoplay; encrypted-media; picture-in-picture"
+        frameborder="0" title="YouTube Video"></iframe>
+    </div>
+    <div id="video-overlay-title" class="video-overlay-title"></div>
+  </div>
 
   <script src="app.js?v=56"></script>
 </body>

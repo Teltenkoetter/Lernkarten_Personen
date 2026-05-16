@@ -147,6 +147,69 @@ function showLinks(elId, arr) {
 }
 
 // ============================================================
+// VIDEO HELPERS
+// ============================================================
+
+function extrahiereYoutubeId(input) {
+  if (!input) return null;
+  input = input.trim();
+  // Plain 11-char ID (letters, digits, -, _)
+  if (/^[A-Za-z0-9_-]{11}$/.test(input)) return input;
+  // Full URL forms
+  try {
+    const url = new URL(input);
+    // youtu.be/VIDEO_ID
+    if (url.hostname === 'youtu.be') {
+      const id = url.pathname.slice(1).split(/[?&]/)[0];
+      if (/^[A-Za-z0-9_-]{11}$/.test(id)) return id;
+    }
+    // youtube.com/watch?v=VIDEO_ID  or  /embed/VIDEO_ID  or  /shorts/VIDEO_ID
+    const vParam = url.searchParams.get('v');
+    if (vParam && /^[A-Za-z0-9_-]{11}$/.test(vParam)) return vParam;
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    const embedIdx = pathParts.indexOf('embed');
+    const shortsIdx = pathParts.indexOf('shorts');
+    const idx = embedIdx >= 0 ? embedIdx : shortsIdx >= 0 ? shortsIdx : -1;
+    if (idx >= 0 && pathParts[idx + 1] && /^[A-Za-z0-9_-]{11}$/.test(pathParts[idx + 1]))
+      return pathParts[idx + 1];
+  } catch (_) {}
+  return null;
+}
+
+async function ladeVideoTitel(videoId) {
+  try {
+    const url = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&format=json`;
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data.title || null;
+  } catch (_) { return null; }
+}
+
+function showVideo(elId, s) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (!s?.videoId) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  const label = s.videoTitel ? esc(s.videoTitel) : 'Video ansehen';
+  el.innerHTML = `<button class="video-play-btn" data-videoid="${esc(s.videoId)}" data-videotitel="${esc(s.videoTitel || '')}"><span class="video-play-btn-icon">▶</span>${label}</button>`;
+  el.classList.remove('hidden');
+}
+
+function oeffneVideoOverlay(videoId, titel) {
+  document.getElementById('video-iframe').src =
+    `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0`;
+  document.getElementById('video-overlay-title').textContent = titel || '';
+  document.getElementById('video-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function schliesseVideoOverlay() {
+  document.getElementById('video-iframe').src = '';
+  document.getElementById('video-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+// ============================================================
 // STATE
 // ============================================================
 
@@ -309,6 +372,7 @@ function zeigeNameAuto() {
     const n = document.getElementById('lern-notiz-text');
     if (s.notiz) { n.textContent = s.notiz; n.classList.remove('hidden'); } else n.classList.add('hidden');
     showLinks('lern-card-links', s.links || []);
+    showVideo('lern-card-video', s);
   } else if (kartenModus === 'text') {
     document.getElementById('lern-name-karte').classList.add('hidden');
     document.getElementById('lern-vorderseite-text').innerHTML = renderVorderseiteHtml(s.vorderseite || '');
@@ -316,6 +380,7 @@ function zeigeNameAuto() {
     const nr = document.getElementById('lern-notiz-text-rueck');
     if (s.notiz) { nr.textContent = s.notiz; nr.classList.remove('hidden'); } else nr.classList.add('hidden');
     showLinks('lern-card-links', s.links || []);
+    showVideo('lern-card-video', s);
   } else if (lernModus === 'name') {
     if (s.foto) document.getElementById('lern-foto').src = getFotoUrl(s);
     document.getElementById('lernkarte-foto-wrapper').classList.remove('hidden');
@@ -323,11 +388,13 @@ function zeigeNameAuto() {
     const n = document.getElementById('lern-notiz-text');
     if (s.notiz) { n.textContent = s.notiz; n.classList.remove('hidden'); } else n.classList.add('hidden');
     showLinks('lern-card-links', s.links || []);
+    showVideo('lern-card-video', s);
   } else {
     document.getElementById('lern-name-overlay').classList.remove('hidden');
     const n = document.getElementById('lern-notiz-text');
     if (s.notiz) { n.textContent = s.notiz; n.classList.remove('hidden'); } else n.classList.add('hidden');
     showLinks('lern-card-links', s.links || []);
+    showVideo('lern-card-video', s);
   }
   document.getElementById('lern-hint-pill').classList.add('hidden');
   document.getElementById('btn-aufdecken').style.visibility = 'hidden';
@@ -683,7 +750,7 @@ function karteItemHtml(s) {
       <div class="karte-foto-wrapper">
         ${thumb}
       </div>
-      <span class="karte-name karte-detail-trigger" data-id="${s.id}">${esc(s.name)}${s.notiz ? ' <span style="opacity:.45;font-size:.7rem">📝</span>' : ''}${s.links?.length ? ' <span style="opacity:.45;font-size:.7rem">🔗</span>' : ''}</span>
+      <span class="karte-name karte-detail-trigger" data-id="${s.id}">${esc(s.name)}${s.notiz ? ' <span style="opacity:.45;font-size:.7rem">📝</span>' : ''}${s.links?.length ? ' <span style="opacity:.45;font-size:.7rem">🔗</span>' : ''}${s.videoId ? ' <span style="opacity:.55;font-size:.7rem">▶</span>' : ''}</span>
       <button class="btn-favorit${s.favorit ? ' aktiv' : ''}" data-id="${s.id}" title="${s.favorit ? 'Favorit entfernen' : 'Als Favorit markieren'}">★</button>
       <button class="btn-karte-ren"  data-id="${s.id}" title="Bearbeiten">✏️</button>
       <button class="btn-karte-copy" data-id="${s.id}" title="Kopieren">📋</button>
@@ -1118,6 +1185,8 @@ function zeigeKarte() {
   document.getElementById('lern-name-karte-gruppe').textContent = gName;
   document.getElementById('lern-favorit-stern').classList.toggle('hidden', !s.favorit);
   document.getElementById('lern-card-links').classList.add('hidden');
+  const videoEl = document.getElementById('lern-card-video');
+  if (videoEl) { videoEl.classList.add('hidden'); videoEl.innerHTML = ''; }
 
   // Fortschrittsbalken + Counter
   const answered = answeredIds.size;
@@ -1182,6 +1251,7 @@ function zeigeName(wertung) {
     if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
     else { notizEl.classList.add('hidden'); }
     showLinks('lern-card-links', s.links || []);
+    showVideo('lern-card-video', s);
   } else if (kartenModus === 'text') {
     // Begriff-Karte normal aufdecken: Info/Definition anzeigen (Begriff war vorne)
     document.getElementById('lern-name-karte').classList.add('hidden');
@@ -1191,6 +1261,7 @@ function zeigeName(wertung) {
     if (s.notiz) { notizRueck.textContent = s.notiz; notizRueck.classList.remove('hidden'); }
     else { notizRueck.classList.add('hidden'); }
     showLinks('lern-card-links', s.links || []);
+    showVideo('lern-card-video', s);
   } else if (lernModus === 'name') {
     // Foto-Karte umgekehrt aufdecken: Bild anzeigen
     document.getElementById('lern-foto').src = getFotoUrl(s);
@@ -1200,6 +1271,7 @@ function zeigeName(wertung) {
     if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
     else { notizEl.classList.add('hidden'); }
     showLinks('lern-card-links', s.links || []);
+    showVideo('lern-card-video', s);
   } else {
     // Foto-Karte normal aufdecken: Begriff im Overlay
     document.getElementById('lern-name-overlay').classList.remove('hidden');
@@ -1207,6 +1279,7 @@ function zeigeName(wertung) {
     if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
     else { notizEl.classList.add('hidden'); }
     showLinks('lern-card-links', s.links || []);
+    showVideo('lern-card-video', s);
   }
   // Hint Pill verstecken, Fortschrittsbalken aktualisieren
   document.getElementById('lern-hint-pill').classList.add('hidden');
@@ -1323,6 +1396,12 @@ function openKarteEditModal(studentId, mode) {
   document.getElementById('karte-edit-name').value  = s.name;
   document.getElementById('karte-edit-notiz').value = s.notiz || '';
   document.getElementById('karte-edit-links').value = (s.links || []).join('\n');
+  document.getElementById('karte-edit-video').value = s.videoId || '';
+  const editVideoStatus = document.getElementById('karte-edit-video-status');
+  if (editVideoStatus) {
+    editVideoStatus.textContent = s.videoTitel ? `✓ ${s.videoTitel}` : '';
+    editVideoStatus.className = 'video-input-status' + (s.videoTitel ? ' ok' : '');
+  }
 
   // Typ-Chips setzen
   const isFoto = s.modus !== 'text';
@@ -1499,18 +1578,32 @@ document.getElementById('btn-karte-edit-save').addEventListener('click', async (
   const links    = parseLinks(document.getElementById('karte-edit-links').value);
   if (!name || !gruppeId) return;
 
+  // Video: resolve ID + title from current input
+  const videoRaw   = document.getElementById('karte-edit-video').value.trim();
+  const videoId    = extrahiereYoutubeId(videoRaw) || null;
+  let   videoTitel = null;
+  if (videoId) {
+    const orig = studenten.find(x => x.id === editModalStudentId);
+    if (orig?.videoId === videoId && orig?.videoTitel) {
+      videoTitel = orig.videoTitel; // reuse cached title
+    } else {
+      videoTitel = await ladeVideoTitel(videoId);
+    }
+  }
+
   if (editModalMode === 'copy') {
     const orig = studenten.find(x => x.id === editModalStudentId);
     let newS;
     if (orig.modus === 'text') {
       newS = { id: Date.now().toString(), name, gruppeId, modus: 'text',
                foto: null, vorderseite: orig.vorderseite || '', notiz, links,
-               erstellt: new Date().toISOString() };
+               videoId, videoTitel, erstellt: new Date().toISOString() };
     } else {
       const fotoBuf = await orig.foto.arrayBuffer();
       newS = { id: Date.now().toString(), name, gruppeId, modus: 'foto',
                foto: new Blob([fotoBuf], { type: orig.foto.type }),
-               vorderseite: '', notiz, links, erstellt: new Date().toISOString() };
+               vorderseite: '', notiz, links,
+               videoId, videoTitel, erstellt: new Date().toISOString() };
     }
     await dbPut('studenten', newS);
     studenten.push(newS);
@@ -1525,10 +1618,12 @@ document.getElementById('btn-karte-edit-save').addEventListener('click', async (
       toast('Bitte ein Foto auswählen.'); return;
     }
 
-    s.name     = name;
-    s.gruppeId = gruppeId;
-    s.notiz    = notiz;
-    s.links    = links;
+    s.name       = name;
+    s.gruppeId   = gruppeId;
+    s.notiz      = notiz;
+    s.links      = links;
+    s.videoId    = videoId;
+    s.videoTitel = videoTitel;
 
     if (newModus === 'text') {
       s.modus       = 'text';
@@ -1882,26 +1977,32 @@ document.getElementById('form-karte').addEventListener('submit', async e => {
   const modus    = document.getElementById('chip-foto').classList.contains('active') ? 'foto' : 'text';
   const notiz    = document.getElementById('input-notiz').value.trim();
   const links    = parseLinks(document.getElementById('input-links').value);
+  const videoRaw = document.getElementById('input-video').value.trim();
+  const videoId  = extrahiereYoutubeId(videoRaw) || null;
   if (!name || !gruppeId) return;
   const btn = document.getElementById('btn-karte-speichern');
   btn.disabled = true; btn.textContent = 'Wird gespeichert…';
   try {
+    const videoTitel = videoId ? await ladeVideoTitel(videoId) : null;
     let s;
     if (modus === 'foto') {
       const file = document.getElementById('input-foto').files[0];
       if (!file) { toast('Bitte ein Foto auswählen'); return; }
       const blob = await compressPhoto(file);
-      s = { id: Date.now().toString(), name, gruppeId, modus: 'foto', foto: blob, vorderseite: '', notiz, links, erstellt: new Date().toISOString() };
+      s = { id: Date.now().toString(), name, gruppeId, modus: 'foto', foto: blob, vorderseite: '', notiz, links, videoId, videoTitel, erstellt: new Date().toISOString() };
     } else {
       const vorderseite = document.getElementById('input-vorderseite').value.trim();
       if (!vorderseite) { toast('Bitte einen Text eingeben'); return; }
-      s = { id: Date.now().toString(), name, gruppeId, modus: 'text', foto: null, vorderseite, notiz, links, erstellt: new Date().toISOString() };
+      s = { id: Date.now().toString(), name, gruppeId, modus: 'text', foto: null, vorderseite, notiz, links, videoId, videoTitel, erstellt: new Date().toISOString() };
     }
     await dbPut('studenten', s);
     studenten.push(s);
     document.getElementById('input-name').value       = '';
     document.getElementById('input-notiz').value      = '';
     document.getElementById('input-links').value      = '';
+    document.getElementById('input-video').value      = '';
+    const addVideoStatus = document.getElementById('input-video-status');
+    if (addVideoStatus) { addVideoStatus.textContent = ''; addVideoStatus.className = 'video-input-status'; }
     document.getElementById('input-foto').value       = '';
     document.getElementById('input-vorderseite').value = '';
     document.getElementById('foto-vorschau').classList.add('hidden');
@@ -1915,6 +2016,53 @@ document.getElementById('form-karte').addEventListener('submit', async e => {
   }
 });
 
+
+// ── Video Overlay ─────────────────────────────────────────
+document.getElementById('btn-video-close').addEventListener('click', schliesseVideoOverlay);
+document.getElementById('video-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) schliesseVideoOverlay();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !document.getElementById('video-overlay').classList.contains('hidden'))
+    schliesseVideoOverlay();
+});
+
+// Play-Button-Klicks im Lernbereich (event delegation)
+document.getElementById('lernen-flashcard').addEventListener('click', e => {
+  const btn = e.target.closest('.video-play-btn');
+  if (!btn) return;
+  const videoId    = btn.dataset.videoid;
+  const videoTitel = btn.dataset.videotitel;
+  if (videoId) oeffneVideoOverlay(videoId, videoTitel);
+});
+
+// Blur-Validierung: Video-Feld im "Karte hinzufügen"-Formular
+document.getElementById('input-video').addEventListener('blur', async () => {
+  const raw    = document.getElementById('input-video').value.trim();
+  const status = document.getElementById('input-video-status');
+  if (!status) return;
+  if (!raw) { status.textContent = ''; status.className = 'video-input-status'; return; }
+  const id = extrahiereYoutubeId(raw);
+  if (!id) { status.textContent = 'Ungültige Video-ID oder URL'; status.className = 'video-input-status err'; return; }
+  status.textContent = 'Titel wird geladen…'; status.className = 'video-input-status laden';
+  const titel = await ladeVideoTitel(id);
+  if (titel) { status.textContent = `✓ ${titel}`; status.className = 'video-input-status ok'; }
+  else       { status.textContent = 'Video-ID gültig (Titel nicht verfügbar)'; status.className = 'video-input-status ok'; }
+});
+
+// Blur-Validierung: Video-Feld im Edit-Modal
+document.getElementById('karte-edit-video').addEventListener('blur', async () => {
+  const raw    = document.getElementById('karte-edit-video').value.trim();
+  const status = document.getElementById('karte-edit-video-status');
+  if (!status) return;
+  if (!raw) { status.textContent = ''; status.className = 'video-input-status'; return; }
+  const id = extrahiereYoutubeId(raw);
+  if (!id) { status.textContent = 'Ungültige Video-ID oder URL'; status.className = 'video-input-status err'; return; }
+  status.textContent = 'Titel wird geladen…'; status.className = 'video-input-status laden';
+  const titel = await ladeVideoTitel(id);
+  if (titel) { status.textContent = `✓ ${titel}`; status.className = 'video-input-status ok'; }
+  else       { status.textContent = 'Video-ID gültig (Titel nicht verfügbar)'; status.className = 'video-input-status ok'; }
+});
 
 // Overlay: Swipe-Navigation + Tippen zum Schließen
 (function() {
