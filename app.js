@@ -178,7 +178,8 @@ function extrahiereYoutubeId(input) {
 
 async function ladeVideoTitel(videoId) {
   try {
-    const url = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&format=json`;
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const url = `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`;
     const r = await fetch(url);
     if (!r.ok) return null;
     const data = await r.json();
@@ -662,6 +663,7 @@ function fillKarteDetail(s) {
   if (s.notiz) { notizEl.textContent = s.notiz; notizEl.classList.remove('hidden'); }
   else { notizEl.classList.add('hidden'); }
   showLinks('karte-detail-links', s.links || []);
+  showVideo('karte-detail-video', s);
   const counterEl = document.getElementById('karte-detail-counter');
   if (counterEl) counterEl.textContent = detailIds.length > 1 ? `${detailIndex + 1} / ${detailIds.length}` : '';
 }
@@ -2027,14 +2029,16 @@ document.addEventListener('keydown', e => {
     schliesseVideoOverlay();
 });
 
-// Play-Button-Klicks im Lernbereich (event delegation)
-document.getElementById('lernen-flashcard').addEventListener('click', e => {
+// Play-Button-Klicks (event delegation – Lernbereich + Fullview)
+function handleVideoPlayClick(e) {
   const btn = e.target.closest('.video-play-btn');
   if (!btn) return;
   const videoId    = btn.dataset.videoid;
   const videoTitel = btn.dataset.videotitel;
   if (videoId) oeffneVideoOverlay(videoId, videoTitel);
-});
+}
+document.getElementById('lernen-flashcard').addEventListener('click', handleVideoPlayClick);
+document.getElementById('karte-detail-overlay').addEventListener('click', handleVideoPlayClick);
 
 // Blur-Validierung: Video-Feld im "Karte hinzufügen"-Formular
 document.getElementById('input-video').addEventListener('blur', async () => {
