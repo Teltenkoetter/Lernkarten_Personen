@@ -203,11 +203,11 @@ function showVideo(elId, s) {
   if (!s?.videoId) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   if (s.videoTitel) {
     // Embedding erlaubt → Inline-Player
-    el.innerHTML = `<button class="video-play-btn" data-videoid="${esc(s.videoId)}" data-videotitel="${esc(s.videoTitel)}"><span class="video-play-btn-icon">▶</span>${esc(s.videoTitel)}</button>`;
+    el.innerHTML = `<button class="video-play-btn" data-videoid="${esc(s.videoId)}" data-videotitel="${esc(s.videoTitel)}"><span class="video-play-btn-icon">▶</span><span class="video-play-btn-label">${esc(s.videoTitel)}</span></button>`;
   } else {
     // Embedding gesperrt → Link zu YouTube
     const ytUrl = `https://www.youtube.com/watch?v=${esc(s.videoId)}`;
-    el.innerHTML = `<a href="${ytUrl}" target="_blank" rel="noopener noreferrer" class="video-play-btn video-play-btn-ext"><span class="video-play-btn-icon">▶</span>Auf YouTube öffnen</a>`;
+    el.innerHTML = `<a href="${ytUrl}" target="_blank" rel="noopener noreferrer" class="video-play-btn video-play-btn-ext"><span class="video-play-btn-icon">▶</span><span class="video-play-btn-label">Auf YouTube öffnen</span></a>`;
   }
   el.classList.remove('hidden');
 }
