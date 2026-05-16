@@ -867,8 +867,8 @@ textarea.input-notiz::placeholder { color: var(--muted); }
 .lern-feedback.nicht-ok   { pointer-events: auto; cursor: pointer; }
 .lern-feedback.gewusst-ok { color: #4caf50; }
 .lern-feedback.nicht-ok   { color: #cc4444; }
-.lernkarte-foto-wrapper { flex: 1; min-height: 0; max-height: 52dvh; }
-.lernkarte-foto-wrapper img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.lernkarte-foto-wrapper { flex: 1; min-height: 0; max-height: min(55dvh, 78vw); }
+.lernkarte-foto-wrapper img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* Diagonaler Glanzeffekt auf dem Foto */
 .lernkarte-foto-wrapper::after {
