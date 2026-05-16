@@ -2732,9 +2732,17 @@ function pvCardHtml(s, farbe) {
 }
 
 function pvGridHtml(karten, farbe) {
-  return '<div class="pv-grid">' +
-    karten.map(s => pvCardHtml(s, farbe)).join('') +
-    '</div>';
+  let out = '<table class="pv-table"><tbody>';
+  for (let i = 0; i < karten.length; i += 3) {
+    out += '<tr class="pv-row">';
+    for (let j = 0; j < 3; j++) {
+      const s = karten[i + j];
+      out += s ? `<td class="pv-cell">${pvCardHtml(s, farbe)}</td>`
+               : '<td class="pv-cell pv-cell-empty"></td>';
+    }
+    out += '</tr>';
+  }
+  return out + '</tbody></table>';
 }
 
 async function exportAlsPDF(studExport, exportGruppen, exportSammlungen, win) {
@@ -2807,9 +2815,17 @@ body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#fff;color:
 /* Mehr Abstand zwischen Gruppen */
 .pv-gruppe-titel{font-size:10pt;font-weight:600;color:#444;margin:7mm 0 2.5mm}
 
-/* CSS Columns: jede Karte bricht eigenständig — keine erzwungene Gleichhöhe */
-.pv-grid{column-count:3;column-gap:3mm}
-.pv-card{break-inside:avoid;page-break-inside:avoid;margin-bottom:3mm}
+/* Tabellen-Layout: page-break-inside:avoid auf <tr> ist in Safari zuverlässiger als flex/grid */
+.pv-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.pv-row{break-inside:avoid;page-break-inside:avoid}
+.pv-cell{width:33.333%;vertical-align:top;padding:1.5mm}
+.pv-cell-empty{border:none}
+
+/* Screen-Preview: Zeilen als Flex → Karten nehmen nur ihre eigene Inhaltshöhe */
+@media screen{
+  .pv-row{display:flex;align-items:flex-start;margin-bottom:3mm}
+  .pv-cell{display:block;flex:0 0 33.333%;box-sizing:border-box}
+}
 
 /* Karte: Höhe richtet sich nach Inhalt — kein min-height */
 .pv-card{
