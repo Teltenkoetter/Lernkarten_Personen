@@ -213,15 +213,35 @@ function showVideo(elId, s) {
 }
 
 function oeffneVideoOverlay(videoId, titel) {
-  document.getElementById('video-iframe').src =
-    `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0`;
+  // Frischen iframe erstellen — iOS Safari friert alte iframes ein
+  const wrap = document.getElementById('video-iframe-wrap');
+  const oldIframe = document.getElementById('video-iframe');
+  if (oldIframe) oldIframe.remove();
+  const iframe = document.createElement('iframe');
+  iframe.id          = 'video-iframe';
+  iframe.src         = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0`;
+  iframe.allow       = 'autoplay; encrypted-media; picture-in-picture';
+  iframe.allowFullscreen = true;
+  iframe.setAttribute('frameborder', '0');
+  iframe.title       = 'YouTube Video';
+  wrap.appendChild(iframe);
+
   document.getElementById('video-overlay-title').textContent = titel || '';
   document.getElementById('video-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 }
 
 function schliesseVideoOverlay() {
-  document.getElementById('video-iframe').src = '';
+  const iframe = document.getElementById('video-iframe');
+  if (iframe) iframe.remove();
+  // Neuen leeren Placeholder zurücksetzen
+  const wrap = document.getElementById('video-iframe-wrap');
+  const placeholder = document.createElement('iframe');
+  placeholder.id    = 'video-iframe';
+  placeholder.src   = '';
+  placeholder.setAttribute('frameborder', '0');
+  wrap.appendChild(placeholder);
+
   document.getElementById('video-overlay').classList.add('hidden');
   document.body.style.overflow = '';
 }
@@ -2055,6 +2075,14 @@ function handleVideoPlayClick(e) {
 }
 document.getElementById('lernen-flashcard').addEventListener('click', handleVideoPlayClick);
 document.getElementById('karte-detail-overlay').addEventListener('click', handleVideoPlayClick);
+
+// Enter im Video-Feld: kein Form-Submit, nur Blur auslösen
+document.getElementById('input-video').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+});
+document.getElementById('karte-edit-video').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+});
 
 // Blur-Validierung: Video-Feld im "Karte hinzufügen"-Formular
 document.getElementById('input-video').addEventListener('blur', async () => {
