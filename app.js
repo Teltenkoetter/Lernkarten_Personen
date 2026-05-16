@@ -1403,8 +1403,6 @@ function starteSession(karten, shuffle = true) {
   lernKartenOriginal = [...karten];
   lernIstGemischt    = shuffle;
   lernKarten         = shuffle ? mischen([...karten]) : [...karten];
-  document.getElementById('btn-mischen').style.visibility = '';
-  aktualisiereMischenBtn();
   lernIndex    = 0;
   gewusst      = 0;
   nichtGewusst = 0;
@@ -1413,8 +1411,33 @@ function starteSession(karten, shuffle = true) {
   gewusstIds.clear();
   nichtGewusstIds.clear();
   document.getElementById('lern-progress-fill').style.width = '0%';
+
+  // Farbe der ersten Karte VOR dem Einblenden setzen — verhindert
+  // schwarzen Hintergrund während des Countdowns (iOS Safari malt sofort)
+  if (lernKarten.length) {
+    const ersteKarte = lernKarten[0];
+    const g0  = gruppen.find(g => g.id === ersteKarte.gruppeId);
+    const sm0 = g0 ? sammlungen.find(s => s.id === g0.sammlungId) : null;
+    const si0 = sm0 ? getSortierteSammlungen().indexOf(sm0) : 0;
+    const f0  = sammlungFarbe(sm0 || {}, si0);
+    const lk  = document.getElementById('lernkarte');
+    lk.style.setProperty('--sam-farbe', f0);
+    lk.style.setProperty('--sam-farbe-tint', hexToRgba(f0, 0.13));
+  }
+
   document.getElementById('lernen-ende').classList.add('hidden');
   document.getElementById('lernen-flashcard').classList.remove('hidden');
+
+  // Mischen-Button: Zustand + Wackel-Animation bei gemischter Session
+  document.getElementById('btn-mischen').style.visibility = '';
+  aktualisiereMischenBtn();
+  if (shuffle) {
+    const btnM = document.getElementById('btn-mischen');
+    btnM.classList.remove('btn-wackeln');
+    void btnM.offsetWidth; // reflow um Animation neu zu starten
+    btnM.classList.add('btn-wackeln');
+  }
+
   // Timer-Buttons & Autorepeat synchronisieren
   document.querySelectorAll('.timer-btn').forEach(b =>
     b.classList.toggle('active', +b.dataset.sek === timerSekunden)
@@ -1424,19 +1447,6 @@ function starteSession(karten, shuffle = true) {
   );
   if (timerSekunden) {
     erwerbeWakeLock();
-    // Sammlung-Farbe sofort setzen, damit der Hintergrund schon während
-    // des 3-2-1-Countdowns in der richtigen Farbe erscheint
-    if (lernKarten.length) {
-      const ersteKarte = lernKarten[lernIndex] || lernKarten[0];
-      const g0  = gruppen.find(g => g.id === ersteKarte.gruppeId);
-      const sm0 = g0 ? sammlungen.find(s => s.id === g0.sammlungId) : null;
-      const si0 = sm0 ? getSortierteSammlungen().indexOf(sm0) : 0;
-      const f0  = sammlungFarbe(sm0 || {}, si0);
-      const lk  = document.getElementById('lernkarte');
-      lk.style.setProperty('--sam-farbe', f0);
-      lk.style.setProperty('--sam-farbe-tint', hexToRgba(f0, 0.13));
-    }
-    // Countdown 3-2-1 vor dem ersten Timer-Start
     starteCountdown(() => zeigeKarte());
   } else {
     zeigeKarte();
