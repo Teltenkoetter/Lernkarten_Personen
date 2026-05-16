@@ -120,11 +120,17 @@ header h1 { font-size: 1rem; letter-spacing: 0.2px; color: var(--text); }
 }
 .modal-divider { height: 1px; background: var(--border); margin: 0.9rem 0; }
 .modal-body .anleitung-zeilen { margin-bottom: 0; }
+.modal-meta-device {
+  font-size: 0.75rem; color: var(--muted);
+  text-align: center;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
 .modal-meta {
   font-size: 0.75rem; color: var(--muted);
   text-align: center;
-  padding-top: 0.75rem; margin-top: 0.75rem;
-  border-top: 1px solid var(--border);
+  margin-top: 0.3rem;
 }
 .modal-meta-build {
   font-size: 0.68rem;
