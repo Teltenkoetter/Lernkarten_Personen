@@ -542,6 +542,26 @@ function getSortierteGruppenInSammlung(sid) {
   inSam.forEach(g => { if (!gruppenReihenfolge.includes(g.id)) ordered.push(g); });
   return ordered;
 }
+// ── Karten-Reihenfolge (pro Gruppe) ──────────────────────────
+function ladeKartenReihenfolge(gruppeId) {
+  try {
+    const s = localStorage.getItem('kartenReihenfolge-' + gruppeId);
+    return s ? JSON.parse(s) : [];
+  } catch(e) { return []; }
+}
+function speichereKartenReihenfolge(gruppeId, ids) {
+  localStorage.setItem('kartenReihenfolge-' + gruppeId, JSON.stringify(ids));
+}
+function getSortierteKartenInGruppe(gruppeId) {
+  const karten = studenten.filter(s => s.gruppeId === gruppeId);
+  const reihenfolge = ladeKartenReihenfolge(gruppeId);
+  if (!reihenfolge.length) return karten;
+  const ordered = [];
+  reihenfolge.forEach(id => { const k = karten.find(x => x.id === id); if (k) ordered.push(k); });
+  karten.forEach(k => { if (!reihenfolge.includes(k.id)) ordered.push(k); });
+  return ordered;
+}
+
 // Repariert Gruppen ohne gültige Sammlung (Migration-Fallback)
 async function repairOrphanGruppen() {
   const orphans = gruppen.filter(g => !g.sammlungId || !sammlungen.find(s => s.id === g.sammlungId));
@@ -786,7 +806,7 @@ function detailNavigate(dir) {
 }
 
 
-function karteItemHtml(s) {
+function karteItemHtml(s, idx, total) {
   const isText = s.modus === 'text';
   let thumb;
   if (isText) {
@@ -799,6 +819,7 @@ function karteItemHtml(s) {
     thumb = `<div class="karte-foto-leer karte-detail-trigger" data-id="${s.id}" title="Foto fehlt noch">📷</div>
        <input type="file" accept="image/*" class="karte-foto-input" data-id="${s.id}">`;
   }
+  const showMove = (total > 1);
   return `
     <div class="karte-item">
       <div class="karte-foto-wrapper">
@@ -806,6 +827,8 @@ function karteItemHtml(s) {
       </div>
       <span class="karte-name karte-detail-trigger" data-id="${s.id}">${esc(s.name)}${s.notiz ? ' <span style="opacity:.45;font-size:.7rem">📝</span>' : ''}${s.links?.length ? ' <span style="opacity:.45;font-size:.7rem">🔗</span>' : ''}${s.videoId ? ' <span style="opacity:.55;font-size:.7rem">▶</span>' : ''}</span>
       <button class="btn-favorit${s.favorit ? ' aktiv' : ''}" data-id="${s.id}" title="${s.favorit ? 'Favorit entfernen' : 'Als Favorit markieren'}">★</button>
+      ${showMove ? `<button class="btn-karte-move" data-id="${s.id}" data-gid="${s.gruppeId}" data-dir="up" ${idx === 0 ? 'disabled' : ''}>▲</button>
+      <button class="btn-karte-move" data-id="${s.id}" data-gid="${s.gruppeId}" data-dir="down" ${idx === total - 1 ? 'disabled' : ''}>▼</button>` : ''}
       <button class="btn-karte-ren"  data-id="${s.id}" title="Bearbeiten">✏️</button>
       <button class="btn-karte-copy" data-id="${s.id}" title="Kopieren">📋</button>
       <button class="btn-karte-del"  data-id="${s.id}" title="Löschen">✕</button>
@@ -851,7 +874,7 @@ function _renderVerwaltung() {
     const gefiltert = getGefilterteStudenten();
     keinKarteHinweis.classList.toggle('hidden', gefiltert.length > 0);
     container.innerHTML = gefiltert.length
-      ? gefiltert.map(s => karteItemHtml(s)).join('')
+      ? gefiltert.map(s => karteItemHtml(s, 0, 1)).join('')
       : '<p class="hinweis" style="padding:0.5rem 0">Keine Karten gefunden.</p>';
     return;
   }
@@ -878,7 +901,7 @@ function _renderVerwaltung() {
     const kCount = sammlungKartenAnzahl(sam.id);
 
     const gruppenHtml = gs.map((g, gi) => {
-      const kartenInGruppe = studenten.filter(s => s.gruppeId === g.id);
+      const kartenInGruppe = getSortierteKartenInGruppe(g.id);
       const isGroupOpen    = openGruppen.has(g.id);
       const gCount         = kartenInGruppe.length;
       return `<div class="gruppe-karten-section">
@@ -896,7 +919,7 @@ function _renderVerwaltung() {
           </div>
         </div>
         <div id="gruppe-body-${g.id}" class="gruppe-karten-body${isGroupOpen ? '' : ' hidden'}">
-          ${kartenInGruppe.map(s => karteItemHtml(s)).join('')}
+          ${kartenInGruppe.map((s, idx) => karteItemHtml(s, idx, kartenInGruppe.length)).join('')}
         </div>
       </div>`;
     }).join('');
@@ -930,7 +953,7 @@ function _renderVerwaltung() {
   if (orphanGs.length) {
     const isOpen = openSammlungen.has('__orphan__');
     const orphanGruppenHtml = orphanGs.map((g, gi) => {
-      const kartenInGruppe = studenten.filter(s => s.gruppeId === g.id);
+      const kartenInGruppe = getSortierteKartenInGruppe(g.id);
       const isGroupOpen    = openGruppen.has(g.id);
       const gCount         = kartenInGruppe.length;
       return `<div class="gruppe-karten-section">
@@ -945,7 +968,7 @@ function _renderVerwaltung() {
           </div>
         </div>
         <div id="gruppe-body-${g.id}" class="gruppe-karten-body${isGroupOpen ? '' : ' hidden'}">
-          ${kartenInGruppe.map(s => karteItemHtml(s)).join('')}
+          ${kartenInGruppe.map((s, idx) => karteItemHtml(s, idx, kartenInGruppe.length)).join('')}
         </div>
       </div>`;
     }).join('');
@@ -1924,6 +1947,21 @@ document.getElementById('sammlungen-liste').addEventListener('click', async e =>
     return;
   }
 
+  // Karte verschieben (innerhalb Gruppe)
+  const karteMovBtn = e.target.closest('.btn-karte-move');
+  if (karteMovBtn && !karteMovBtn.disabled) {
+    const id  = karteMovBtn.dataset.id;
+    const gid = karteMovBtn.dataset.gid;
+    const dir = karteMovBtn.dataset.dir;
+    const sorted = getSortierteKartenInGruppe(gid);
+    const idx = sorted.findIndex(x => x.id === id);
+    if (dir === 'up'   && idx > 0)               [sorted[idx-1], sorted[idx]]   = [sorted[idx], sorted[idx-1]];
+    if (dir === 'down' && idx < sorted.length-1) [sorted[idx],   sorted[idx+1]] = [sorted[idx+1], sorted[idx]];
+    speichereKartenReihenfolge(gid, sorted.map(x => x.id));
+    renderVerwaltung();
+    return;
+  }
+
   // Gruppe verschieben (innerhalb Sammlung)
   const moveBtn = e.target.closest('.btn-gruppe-move');
   if (moveBtn && !moveBtn.disabled) {
@@ -2279,7 +2317,7 @@ document.getElementById('btn-lernen-start').addEventListener('click', () => {
     const seen = new Set(favKarten.map(s => s.id));
     karten = [...favKarten, ...otherKarten.filter(s => !seen.has(s.id))];
   } else {
-    karten = studenten.filter(s => selectedGids.includes(s.gruppeId));
+    karten = selectedGids.flatMap(gid => getSortierteKartenInGruppe(gid));
   }
   if (!karten.length) return;
   // Tutorial-Gruppen immer in Reihenfolge (nicht mischen)
@@ -2693,20 +2731,10 @@ function pvCardHtml(s, farbe) {
     </div>`;
 }
 
-// Baut eine Tabellenzeile mit bis zu 3 Karten — Tabellen-<tr> ist in Safaris PDF-Renderer
-// die zuverlässigste Methode für page-break-inside:avoid (Flex/Grid haben Bugs).
 function pvGridHtml(karten, farbe) {
-  let out = '<table class="pv-table"><tbody>';
-  for (let i = 0; i < karten.length; i += 3) {
-    out += '<tr class="pv-row">';
-    for (let j = 0; j < 3; j++) {
-      const s = karten[i + j];
-      out += s ? `<td class="pv-cell">${pvCardHtml(s, farbe)}</td>`
-               : '<td class="pv-cell pv-cell-empty"></td>';
-    }
-    out += '</tr>';
-  }
-  return out + '</tbody></table>';
+  return '<div class="pv-grid">' +
+    karten.map(s => pvCardHtml(s, farbe)).join('') +
+    '</div>';
 }
 
 async function exportAlsPDF(studExport, exportGruppen, exportSammlungen, win) {
@@ -2779,17 +2807,9 @@ body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#fff;color:
 /* Mehr Abstand zwischen Gruppen */
 .pv-gruppe-titel{font-size:10pt;font-weight:600;color:#444;margin:7mm 0 2.5mm}
 
-/* Tabellen-Layout: page-break-inside:avoid auf <tr> ist in Safari zuverlässiger als flex/grid */
-.pv-table{width:100%;border-collapse:collapse;table-layout:fixed}
-.pv-row{break-inside:avoid;page-break-inside:avoid}
-.pv-cell{width:33.333%;vertical-align:top;padding:1.5mm}
-.pv-cell-empty{border:none}
-
-/* Screen-Preview: Zeilen als Flex → Karten nehmen nur ihre eigene Inhaltshöhe */
-@media screen{
-  .pv-row{display:flex;align-items:flex-start;margin-bottom:3mm}
-  .pv-cell{display:block;flex:0 0 33.333%;box-sizing:border-box}
-}
+/* CSS Columns: jede Karte bricht eigenständig — keine erzwungene Gleichhöhe */
+.pv-grid{column-count:3;column-gap:3mm}
+.pv-card{break-inside:avoid;page-break-inside:avoid;margin-bottom:3mm}
 
 /* Karte: Höhe richtet sich nach Inhalt — kein min-height */
 .pv-card{

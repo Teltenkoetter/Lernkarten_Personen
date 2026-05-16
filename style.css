@@ -619,12 +619,18 @@ textarea.input-notiz::placeholder { color: var(--muted); }
 .karte-name { flex: 1; font-weight: 600; font-size: 0.9rem; min-width: 0; }
 .karte-detail-trigger { cursor: zoom-in; }
 .karte-name.karte-detail-trigger:hover { text-decoration: underline; text-underline-offset: 2px; }
-.btn-karte-ren, .btn-karte-copy, .btn-karte-del {
+.btn-karte-move, .btn-karte-ren, .btn-karte-copy, .btn-karte-del {
   background: none; border: none; color: var(--muted);
   cursor: pointer; padding: 0.25rem 0.35rem;
   border-radius: 4px; font-size: 0.88rem; line-height: 1;
   flex-shrink: 0;
 }
+.btn-karte-move {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.3rem;
+}
+.btn-karte-move:active { color: var(--text); }
+.btn-karte-move:disabled { opacity: 0.2; cursor: default; }
 .btn-karte-ren:active  { color: var(--text); }
 .btn-karte-copy:active { color: var(--text); }
 .btn-karte-del:active  { color: var(--danger); }
