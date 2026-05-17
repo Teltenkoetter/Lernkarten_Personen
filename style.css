@@ -1248,6 +1248,20 @@ textarea.input-notiz::placeholder { color: var(--muted); }
   transition: opacity 0.5s;
 }
 .karte-detail-swipe-hint.fade-out { opacity: 0; }
+.karte-detail-share-btn {
+  position: absolute;
+  bottom: calc(1.4rem + env(safe-area-inset-bottom));
+  left: 1.5rem;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 50%;
+  width: 2.4rem; height: 2.4rem;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.karte-detail-share-btn:active { background: rgba(255,255,255,0.2); color: #fff; }
 
 /* ── TOAST ─────────────────────────────────────────── */
 .toast {

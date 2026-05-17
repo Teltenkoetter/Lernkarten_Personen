@@ -768,6 +768,79 @@ function openKarteDetailOverlay(id) {
   }
 }
 
+async function teileKarte(s) {
+  const MEMOFIX_URL = 'https://teltenkoetter.github.io/MemoFix/';
+  const zeilen = [];
+
+  // Name / Begriff
+  zeilen.push(`📌 ${s.name}`);
+
+  // Vorderseite (Text-Karten)
+  if (s.modus === 'text' && s.vorderseite) {
+    zeilen.push('');
+    zeilen.push(s.vorderseite.trim());
+  }
+
+  // Notiz
+  if (s.notiz) {
+    zeilen.push('');
+    zeilen.push(`📝 ${s.notiz.trim()}`);
+  }
+
+  // Links
+  if (s.links?.length) {
+    zeilen.push('');
+    s.links.forEach(l => zeilen.push(`🔗 ${l}`));
+  }
+
+  // Video
+  if (s.videoId) {
+    const ytUrl = `https://www.youtube.com/watch?v=${s.videoId}`;
+    const label = s.videoTitel ? `▶ ${s.videoTitel}` : '▶ YouTube';
+    zeilen.push('');
+    zeilen.push(`${label}\n${ytUrl}`);
+  }
+
+  // MemoFix-Signatur
+  zeilen.push('');
+  zeilen.push(`— Geteilt mit MemoFix\n${MEMOFIX_URL}`);
+
+  const shareText = zeilen.join('\n');
+
+  // Foto-Karte: Bild als Datei mitteilen
+  if (s.modus !== 'text' && s.foto) {
+    try {
+      const dbRec = await dbGet('studenten', s.id);
+      const blob  = dbRec?.foto || s.foto;
+      const file  = new File([blob], `${s.name}.jpg`, { type: blob.type || 'image/jpeg' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: s.name, text: shareText, files: [file] });
+        return;
+      }
+    } catch (err) { /* Fallback auf Text-only */ }
+  }
+
+  // Text-Karte oder Fallback
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: s.name, text: shareText });
+      return;
+    } catch (err) { if (err.name === 'AbortError') return; }
+  }
+
+  // Letzter Fallback: in Zwischenablage
+  try {
+    await navigator.clipboard.writeText(shareText);
+    toast('Inhalt kopiert ✓');
+  } catch (_) { toast('Teilen nicht verfügbar'); }
+}
+
+document.getElementById('btn-karte-teilen').addEventListener('click', async e => {
+  e.stopPropagation(); // Overlay nicht schließen
+  const s = studenten.find(x => x.id === detailIds[detailIndex]);
+  if (s) await teileKarte(s);
+});
+
 function detailNavigate(dir) {
   if (!detailIds.length) return;
   const next = detailIndex + dir;
