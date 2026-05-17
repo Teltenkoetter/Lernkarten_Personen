@@ -2249,7 +2249,17 @@ document.getElementById('btn-toggle-alle-gruppen').addEventListener('click', () 
 });
 
 // Suchen + Sortieren
-document.getElementById('input-karten-suche').addEventListener('input', () => renderVerwaltung());
+document.getElementById('input-karten-suche').addEventListener('input', () => {
+  const hasText = document.getElementById('input-karten-suche').value.length > 0;
+  document.getElementById('btn-suche-clear').classList.toggle('hidden', !hasText);
+  renderVerwaltung();
+});
+document.getElementById('btn-suche-clear').addEventListener('click', () => {
+  document.getElementById('input-karten-suche').value = '';
+  document.getElementById('btn-suche-clear').classList.add('hidden');
+  renderVerwaltung();
+  document.getElementById('input-karten-suche').focus();
+});
 document.getElementById('select-karten-sort').addEventListener('change', () => renderVerwaltung());
 
 // ============================================================
@@ -2608,6 +2618,24 @@ document.getElementById('btn-export-start').addEventListener('click', async () =
   // PDF: Fenster SOFORT öffnen (synchron, direkt beim Klick) — bevor irgendein await folgt,
   // damit iOS Safari es als Nutzer-Geste akzeptiert und nicht als Popup blockt.
   const fmt = document.querySelector('.export-fmt-btn.active')?.dataset.fmt || 'datei';
+
+  // PDF-Warnung: gemischte Typen oder mehrere Sammlungen
+  if (fmt === 'pdf') {
+    const exportStudVorschau = studenten.filter(s => {
+      if (selectedGids.includes('__favoriten__') && s.favorit) return true;
+      return selectedGids.filter(g => g !== '__favoriten__').includes(s.gruppeId);
+    });
+    const hatFoto  = exportStudVorschau.some(s => s.modus !== 'text' && s.foto);
+    const hatText  = exportStudVorschau.some(s => s.modus === 'text');
+    const sammlIds = new Set(
+      gruppen.filter(g => selectedGids.includes(g.id)).map(g => g.sammlungId).filter(Boolean)
+    );
+    const warnTeile = [];
+    if (hatFoto && hatText) warnTeile.push('⚠️ Foto- und Text-Karten gemischt — das Layout kann uneinheitlich wirken.');
+    if (sammlIds.size > 1)  warnTeile.push('⚠️ Mehrere Sammlungen ausgewählt — verschiedene Themen in einem PDF.');
+    if (warnTeile.length && !confirm(warnTeile.join('\n\n') + '\n\nTrotzdem als PDF exportieren?')) return;
+  }
+
   let pdfWin = null;
   if (fmt === 'pdf') {
     pdfWin = window.open('', '_blank');

@@ -307,7 +307,10 @@
           <button id="btn-toggle-alle-gruppen" class="btn-gruppen-toggle">Alle öffnen</button>
         </div>
         <div class="karten-filter">
-          <input type="text" id="input-karten-suche" placeholder="🔍 Karten suchen…" class="karten-suche">
+          <div class="suche-wrap">
+            <input type="text" id="input-karten-suche" placeholder="🔍 Karten suchen…" class="karten-suche">
+            <button id="btn-suche-clear" class="suche-clear-btn hidden" aria-label="Suche löschen">✕</button>
+          </div>
           <select id="select-karten-sort" class="karten-sort">
             <option value="neu">Neueste zuerst</option>
             <option value="az">A → Z</option>

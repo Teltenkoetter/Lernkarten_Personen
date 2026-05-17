@@ -468,11 +468,21 @@ textarea.input-notiz::placeholder { color: var(--muted); }
 
 /* ── KARTEN FILTER (Suchen + Sortieren) ────────────── */
 .karten-filter { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+.suche-wrap { flex: 1; min-width: 0; position: relative; display: flex; }
 .karten-suche {
   flex: 1; min-width: 0;
-  padding: 0.6rem 0.8rem !important;
+  padding: 0.6rem 2.2rem 0.6rem 0.8rem !important;
   font-size: 0.9rem !important;
 }
+.suche-clear-btn {
+  position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted);
+  font-size: 0.85rem; cursor: pointer; padding: 0.2rem 0.3rem;
+  line-height: 1; border-radius: 4px;
+  transition: color 0.15s;
+}
+.suche-clear-btn:active { color: var(--text); }
+.suche-clear-btn.hidden { display: none; }
 .karten-sort {
   flex-shrink: 0;
   padding: 0.6rem 2.2rem 0.6rem 0.7rem !important;
