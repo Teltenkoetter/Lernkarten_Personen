@@ -2294,13 +2294,14 @@ document.getElementById('karte-edit-video').addEventListener('blur', async () =>
     const dy = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       detailNavigate(dx < 0 ? 1 : -1);
-    } else if (!touchMoved && !e.target.closest?.('.video-play-btn')) {
+    } else if (!touchMoved && !e.target.closest?.('.video-play-btn') && !e.target.closest?.('.karte-detail-share-btn')) {
       overlay.classList.add('hidden');
     }
   }, { passive: true });
 
   overlay.addEventListener('click', e => {
     if (e.target.closest('.video-play-btn')) return;
+    if (e.target.closest('.karte-detail-share-btn')) return;
     if (!('ontouchstart' in window)) overlay.classList.add('hidden');
   });
 })();
