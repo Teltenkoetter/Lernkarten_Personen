@@ -801,10 +801,7 @@ function _cvRoundRect(ctx, x, y, w, h, r) {
 }
 
 async function erstelleKartenBild(s) {
-  const W = 630, H = 880, PAD = 40, RADIUS = 24;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
+  const W = 630, PAD = 40, RADIUS = 24;
 
   // Akzentfarbe der Sammlung
   const gruppe = gruppen.find(g => g.id === s.gruppeId);
@@ -815,183 +812,159 @@ async function erstelleKartenBild(s) {
   const gC = parseInt(akzent.slice(3, 5), 16);
   const bC = parseInt(akzent.slice(5, 7), 16);
 
-  // Clip auf abgerundete Karte
+  const isFoto  = s.modus !== 'text' && s.foto;
+  const PHOTO_H = isFoto ? Math.round(W * 0.82) : 0; // ~517px — typisches Filmplakat-Verhältnis
+  const AKZENT  = 5;
+  const BRAND_H = 52;
+
+  // ── Texte vorab umbrechen (auf Hilfs-Canvas messen) ──────
+  const tmp = document.createElement('canvas').getContext('2d');
+  const FONT_NAME  = 'bold 48px sans-serif';
+  const FONT_NOTIZ = '27px sans-serif';
+  const FONT_HINT  = '22px sans-serif';
+  const FONT_SAM   = '19px sans-serif';
+  const NAME_LH = 58, NOTIZ_LH = 36, HINT_LH = 30;
+
+  tmp.font = FONT_NAME;
+  const nameLines  = _cvWrapText(tmp, s.name, W - PAD * 2);
+
+  tmp.font = FONT_NOTIZ;
+  const notizLines = s.notiz ? _cvWrapText(tmp, s.notiz.trim(), W - PAD * 2) : [];
+
+  tmp.font = FONT_NAME;
+  const vordLines  = (s.modus === 'text' && s.vorderseite)
+    ? _cvWrapText(tmp, s.vorderseite.trim(), W - PAD * 2) : [];
+
+  // Nur kurze Hinweise auf Links/Video — keine URLs
+  const hints = [];
+  if (s.links?.length) hints.push(`🔗 ${s.links.length === 1 ? '1 Weblink' : s.links.length + ' Weblinks'}`);
+  if (s.videoId)       hints.push(`▶ ${s.videoTitel || 'Video'}`);
+
+  const samName = (sam?.name || '').toUpperCase();
+
+  // ── Höhe berechnen ──────────────────────────────────────
+  const samH   = samName ? 30 : 0;
+  const nameH  = nameLines.length * NAME_LH;
+  const divH   = 20;
+  const vordH  = vordLines.length  ? vordLines.length  * 40 + 12 : 0;
+  const notizH = notizLines.length ? notizLines.length * NOTIZ_LH + 12 : 0;
+  const hintH  = hints.length      ? HINT_LH + 10 : 0;
+  const textPadTop = isFoto ? 24 : 56;
+  const textPadBot = 16;
+
+  const textBlock = textPadTop + samH + nameH + 16 + divH + vordH + notizH + hintH + textPadBot;
+  const H = PHOTO_H + AKZENT + Math.max(textBlock, 200) + BRAND_H;
+
+  // ── Echtes Canvas ────────────────────────────────────────
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
   _cvRoundRect(ctx, 0, 0, W, H, RADIUS);
   ctx.clip();
 
-  const isFoto = s.modus !== 'text' && s.foto;
+  // Hintergrund
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, W, H);
 
   if (isFoto) {
-    // ══ FOTO-KARTE ══════════════════════════════════════
-    const PHOTO_H = Math.round(H * 0.60);
-
-    // Foto laden & cover-fit zeichnen
-    const fotoUrl = getFotoUrl(s);
+    // Foto laden & cover-fit
     const img = await new Promise((res, rej) => {
       const i = new Image();
       i.onload = () => res(i);
       i.onerror = rej;
-      i.src = fotoUrl;
+      i.src = getFotoUrl(s);
     });
     const scale = Math.max(W / img.width, PHOTO_H / img.height);
     const sw = W / scale, sh = PHOTO_H / scale;
-    const sx = (img.width  - sw) / 2;
-    const sy = (img.height - sh) / 2;
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, PHOTO_H);
+    ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, W, PHOTO_H);
 
-    // Gradient-Übergang zum dunklen Bereich
-    const transH = 100;
-    const grad = ctx.createLinearGradient(0, PHOTO_H - transH, 0, PHOTO_H + 10);
-    grad.addColorStop(0, 'rgba(10,10,10,0)');
-    grad.addColorStop(1, 'rgba(10,10,10,1)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, PHOTO_H - transH, W, transH + 10);
-
-    // Dunkler Unterpanel
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, PHOTO_H, W, H - PHOTO_H);
-
-    // Akzent-Linie
-    ctx.fillStyle = akzent;
-    ctx.fillRect(0, PHOTO_H, W, 5);
-
-    // Name
-    ctx.font = `bold 46px sans-serif`;
-    ctx.fillStyle = '#ffffff';
-    ctx.textBaseline = 'top';
-    const nameLines = _cvWrapText(ctx, s.name, W - PAD * 2);
-    const lineH = 54;
-    let y = PHOTO_H + 22;
-    nameLines.slice(0, 3).forEach(ln => { ctx.fillText(ln, PAD, y); y += lineH; });
-
-    // Notiz
-    if (s.notiz) {
-      ctx.font = `26px sans-serif`;
-      ctx.fillStyle = 'rgba(255,255,255,0.60)';
-      const nLines = _cvWrapText(ctx, s.notiz, W - PAD * 2);
-      y += 4;
-      nLines.slice(0, 2).forEach(ln => { ctx.fillText(ln, PAD, y); y += 34; });
-    }
-
-    // Links / Video (kompakt)
-    y = Math.max(y + 8, PHOTO_H + 22 + 3 * lineH + 80);
-    const linkItems = [];
-    (s.links || []).forEach(l => linkItems.push({ icon: '🔗', text: l }));
-    if (s.videoId) linkItems.push({ icon: '▶', text: s.videoTitel || 'YouTube' });
-    if (linkItems.length && y < H - 80) {
-      ctx.font = `22px sans-serif`;
-      ctx.fillStyle = `rgba(${rC},${gC},${bC},0.9)`;
-      linkItems.slice(0, 3).forEach(item => {
-        if (y >= H - 80) return;
-        const label = item.icon + ' ' + item.text;
-        // Truncate to fit
-        let txt = label;
-        while (ctx.measureText(txt).width > W - PAD * 2 && txt.length > 10) txt = txt.slice(0, -1);
-        if (txt.length < label.length) txt += '…';
-        ctx.fillText(txt, PAD, y);
-        y += 30;
-      });
-    }
-
+    // Sanfter Übergang unten
+    const fadeGrad = ctx.createLinearGradient(0, PHOTO_H - 80, 0, PHOTO_H);
+    fadeGrad.addColorStop(0, 'rgba(10,10,10,0)');
+    fadeGrad.addColorStop(1, 'rgba(10,10,10,1)');
+    ctx.fillStyle = fadeGrad;
+    ctx.fillRect(0, PHOTO_H - 80, W, 80);
   } else {
-    // ══ TEXT-KARTE ══════════════════════════════════════
-    ctx.fillStyle = '#0f0f0f';
+    // Text-Karte: dezenter Radial-Glow
+    const glow = ctx.createRadialGradient(W * 0.5, H * 0.18, 0, W * 0.5, H * 0.18, W * 0.65);
+    glow.addColorStop(0, `rgba(${rC},${gC},${bC},0.13)`);
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow;
     ctx.fillRect(0, 0, W, H);
-
-    // Subtiler Radial-Glow
-    const glowGrad = ctx.createRadialGradient(W * 0.25, H * 0.2, 0, W * 0.25, H * 0.2, W * 0.7);
-    glowGrad.addColorStop(0, `rgba(${rC},${gC},${bC},0.14)`);
-    glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = glowGrad;
-    ctx.fillRect(0, 0, W, H);
-
-    // Großer Deko-Kreis oben rechts
-    ctx.beginPath();
-    ctx.arc(W + 20, -20, 200, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${rC},${gC},${bC},0.08)`;
-    ctx.fill();
-
-    // Akzent-Balken oben
-    ctx.fillStyle = akzent;
-    ctx.fillRect(0, 0, W, 8);
-
-    let y = 56;
-
-    // Name
-    ctx.font = `bold 54px sans-serif`;
-    ctx.fillStyle = '#ffffff';
-    ctx.textBaseline = 'top';
-    const nameLines = _cvWrapText(ctx, s.name, W - PAD * 2);
-    nameLines.slice(0, 4).forEach(ln => { ctx.fillText(ln, PAD, y); y += 64; });
-
-    // Akzent-Divider
-    y += 8;
-    ctx.fillStyle = akzent;
-    ctx.fillRect(PAD, y, 56, 4);
-    y += 24;
-
-    // Vorderseite
-    if (s.vorderseite) {
-      ctx.font = `30px sans-serif`;
-      ctx.fillStyle = 'rgba(255,255,255,0.72)';
-      const vLines = _cvWrapText(ctx, s.vorderseite.trim(), W - PAD * 2);
-      vLines.slice(0, 7).forEach(ln => { ctx.fillText(ln, PAD, y); y += 40; });
-      y += 8;
-    }
-
-    // Notiz
-    if (s.notiz) {
-      ctx.font = `italic 26px sans-serif`;
-      ctx.fillStyle = 'rgba(255,255,255,0.48)';
-      const nLines = _cvWrapText(ctx, s.notiz.trim(), W - PAD * 2);
-      y += 4;
-      nLines.slice(0, 2).forEach(ln => { ctx.fillText(ln, PAD, y); y += 34; });
-    }
-
-    // Links / Video
-    const linkItems = [];
-    (s.links || []).forEach(l => linkItems.push({ icon: '🔗', text: l }));
-    if (s.videoId) linkItems.push({ icon: '▶', text: s.videoTitel || 'YouTube' });
-    if (linkItems.length) {
-      y += 12;
-      ctx.font = `22px sans-serif`;
-      ctx.fillStyle = `rgba(${rC},${gC},${bC},0.9)`;
-      linkItems.slice(0, 4).forEach(item => {
-        if (y >= H - 80) return;
-        let txt = item.icon + ' ' + item.text;
-        while (ctx.measureText(txt).width > W - PAD * 2 && txt.length > 10) txt = txt.slice(0, -1);
-        if (txt.length < (item.icon + ' ' + item.text).length) txt += '…';
-        ctx.fillText(txt, PAD, y);
-        y += 30;
-      });
-    }
   }
 
-  // ── MemoFix Branding (beide Varianten) ──────────────────
-  const BRAND_Y = H - 52;
-  const brandGrad = ctx.createLinearGradient(0, BRAND_Y - 12, 0, H);
-  brandGrad.addColorStop(0, 'rgba(0,0,0,0)');
-  brandGrad.addColorStop(0.3, 'rgba(0,0,0,0.55)');
-  brandGrad.addColorStop(1, 'rgba(0,0,0,0.70)');
-  ctx.fillStyle = brandGrad;
-  ctx.fillRect(0, BRAND_Y - 12, W, H - BRAND_Y + 12);
+  // Akzent-Stripe
+  ctx.fillStyle = akzent;
+  ctx.fillRect(0, PHOTO_H, W, AKZENT);
 
-  // Punkt
+  // ── Text-Bereich ─────────────────────────────────────────
+  ctx.textBaseline = 'top';
+  let y = PHOTO_H + AKZENT + textPadTop;
+
+  // Sammlungsname
+  if (samName) {
+    ctx.font = FONT_SAM;
+    ctx.fillStyle = `rgba(${rC},${gC},${bC},0.85)`;
+    ctx.fillText(samName, PAD, y);
+    y += samH;
+  }
+
+  // Name
+  ctx.font = FONT_NAME;
+  ctx.fillStyle = '#ffffff';
+  nameLines.forEach(ln => { ctx.fillText(ln, PAD, y); y += NAME_LH; });
+  y += 16;
+
+  // Divider
+  ctx.fillStyle = akzent;
+  ctx.fillRect(PAD, y, 52, 3);
+  y += divH;
+
+  // Vorderseite (Text-Karten)
+  if (vordLines.length) {
+    ctx.font = '30px sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    vordLines.forEach(ln => { ctx.fillText(ln, PAD, y); y += 40; });
+    y += 12;
+  }
+
+  // Notiz (vollständig, nicht abgeschnitten)
+  if (notizLines.length) {
+    ctx.font = FONT_NOTIZ;
+    ctx.fillStyle = 'rgba(255,255,255,0.62)';
+    notizLines.forEach(ln => { ctx.fillText(ln, PAD, y); y += NOTIZ_LH; });
+    y += 12;
+  }
+
+  // Weblink/Video-Hinweis (kein URL-Text)
+  if (hints.length) {
+    y += 4;
+    ctx.font = FONT_HINT;
+    ctx.fillStyle = `rgba(${rC},${gC},${bC},0.80)`;
+    ctx.fillText(hints.join('   '), PAD, y);
+  }
+
+  // ── MemoFix Branding ─────────────────────────────────────
+  const BRAND_Y = H - BRAND_H;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, BRAND_Y, W, BRAND_H);
+
   ctx.beginPath();
-  ctx.arc(PAD + 10, BRAND_Y + 18, 9, 0, Math.PI * 2);
+  ctx.arc(PAD + 10, BRAND_Y + BRAND_H / 2, 9, 0, Math.PI * 2);
   ctx.fillStyle = akzent;
   ctx.fill();
 
-  ctx.font = `bold 21px sans-serif`;
+  ctx.font = 'bold 20px sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
-  ctx.fillText('MemoFix', PAD + 26, BRAND_Y + 18);
+  ctx.fillText('MemoFix', PAD + 26, BRAND_Y + BRAND_H / 2);
 
-  ctx.font = `17px sans-serif`;
-  ctx.fillStyle = 'rgba(255,255,255,0.42)';
+  ctx.font = '16px sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.40)';
   ctx.textAlign = 'right';
-  ctx.fillText('teltenkoetter.github.io/MemoFix', W - PAD, BRAND_Y + 18);
+  ctx.fillText('teltenkoetter.github.io/MemoFix', W - PAD, BRAND_Y + BRAND_H / 2);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
 
