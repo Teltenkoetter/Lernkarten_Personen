@@ -768,67 +768,273 @@ function openKarteDetailOverlay(id) {
   }
 }
 
+// ── Canvas Sammelkarte ───────────────────────────────────
+function _cvWrapText(ctx, text, maxW) {
+  const words = String(text).split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && cur) {
+      lines.push(cur);
+      cur = w;
+    } else {
+      cur = test;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function _cvRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+async function erstelleKartenBild(s) {
+  const W = 630, H = 880, PAD = 40, RADIUS = 24;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Akzentfarbe der Sammlung
+  const gruppe = gruppen.find(g => g.id === s.gruppeId);
+  const sam    = sammlungen.find(sm => sm.id === gruppe?.sammlungId);
+  const si     = sammlungen.indexOf(sam);
+  const akzent = sammlungFarbe(sam || {}, si >= 0 ? si : 0);
+  const rC = parseInt(akzent.slice(1, 3), 16);
+  const gC = parseInt(akzent.slice(3, 5), 16);
+  const bC = parseInt(akzent.slice(5, 7), 16);
+
+  // Clip auf abgerundete Karte
+  _cvRoundRect(ctx, 0, 0, W, H, RADIUS);
+  ctx.clip();
+
+  const isFoto = s.modus !== 'text' && s.foto;
+
+  if (isFoto) {
+    // ══ FOTO-KARTE ══════════════════════════════════════
+    const PHOTO_H = Math.round(H * 0.60);
+
+    // Foto laden & cover-fit zeichnen
+    const fotoUrl = getFotoUrl(s);
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = fotoUrl;
+    });
+    const scale = Math.max(W / img.width, PHOTO_H / img.height);
+    const sw = W / scale, sh = PHOTO_H / scale;
+    const sx = (img.width  - sw) / 2;
+    const sy = (img.height - sh) / 2;
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, PHOTO_H);
+
+    // Gradient-Übergang zum dunklen Bereich
+    const transH = 100;
+    const grad = ctx.createLinearGradient(0, PHOTO_H - transH, 0, PHOTO_H + 10);
+    grad.addColorStop(0, 'rgba(10,10,10,0)');
+    grad.addColorStop(1, 'rgba(10,10,10,1)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, PHOTO_H - transH, W, transH + 10);
+
+    // Dunkler Unterpanel
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, PHOTO_H, W, H - PHOTO_H);
+
+    // Akzent-Linie
+    ctx.fillStyle = akzent;
+    ctx.fillRect(0, PHOTO_H, W, 5);
+
+    // Name
+    ctx.font = `bold 46px sans-serif`;
+    ctx.fillStyle = '#ffffff';
+    ctx.textBaseline = 'top';
+    const nameLines = _cvWrapText(ctx, s.name, W - PAD * 2);
+    const lineH = 54;
+    let y = PHOTO_H + 22;
+    nameLines.slice(0, 3).forEach(ln => { ctx.fillText(ln, PAD, y); y += lineH; });
+
+    // Notiz
+    if (s.notiz) {
+      ctx.font = `26px sans-serif`;
+      ctx.fillStyle = 'rgba(255,255,255,0.60)';
+      const nLines = _cvWrapText(ctx, s.notiz, W - PAD * 2);
+      y += 4;
+      nLines.slice(0, 2).forEach(ln => { ctx.fillText(ln, PAD, y); y += 34; });
+    }
+
+    // Links / Video (kompakt)
+    y = Math.max(y + 8, PHOTO_H + 22 + 3 * lineH + 80);
+    const linkItems = [];
+    (s.links || []).forEach(l => linkItems.push({ icon: '🔗', text: l }));
+    if (s.videoId) linkItems.push({ icon: '▶', text: s.videoTitel || 'YouTube' });
+    if (linkItems.length && y < H - 80) {
+      ctx.font = `22px sans-serif`;
+      ctx.fillStyle = `rgba(${rC},${gC},${bC},0.9)`;
+      linkItems.slice(0, 3).forEach(item => {
+        if (y >= H - 80) return;
+        const label = item.icon + ' ' + item.text;
+        // Truncate to fit
+        let txt = label;
+        while (ctx.measureText(txt).width > W - PAD * 2 && txt.length > 10) txt = txt.slice(0, -1);
+        if (txt.length < label.length) txt += '…';
+        ctx.fillText(txt, PAD, y);
+        y += 30;
+      });
+    }
+
+  } else {
+    // ══ TEXT-KARTE ══════════════════════════════════════
+    ctx.fillStyle = '#0f0f0f';
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtiler Radial-Glow
+    const glowGrad = ctx.createRadialGradient(W * 0.25, H * 0.2, 0, W * 0.25, H * 0.2, W * 0.7);
+    glowGrad.addColorStop(0, `rgba(${rC},${gC},${bC},0.14)`);
+    glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Großer Deko-Kreis oben rechts
+    ctx.beginPath();
+    ctx.arc(W + 20, -20, 200, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${rC},${gC},${bC},0.08)`;
+    ctx.fill();
+
+    // Akzent-Balken oben
+    ctx.fillStyle = akzent;
+    ctx.fillRect(0, 0, W, 8);
+
+    let y = 56;
+
+    // Name
+    ctx.font = `bold 54px sans-serif`;
+    ctx.fillStyle = '#ffffff';
+    ctx.textBaseline = 'top';
+    const nameLines = _cvWrapText(ctx, s.name, W - PAD * 2);
+    nameLines.slice(0, 4).forEach(ln => { ctx.fillText(ln, PAD, y); y += 64; });
+
+    // Akzent-Divider
+    y += 8;
+    ctx.fillStyle = akzent;
+    ctx.fillRect(PAD, y, 56, 4);
+    y += 24;
+
+    // Vorderseite
+    if (s.vorderseite) {
+      ctx.font = `30px sans-serif`;
+      ctx.fillStyle = 'rgba(255,255,255,0.72)';
+      const vLines = _cvWrapText(ctx, s.vorderseite.trim(), W - PAD * 2);
+      vLines.slice(0, 7).forEach(ln => { ctx.fillText(ln, PAD, y); y += 40; });
+      y += 8;
+    }
+
+    // Notiz
+    if (s.notiz) {
+      ctx.font = `italic 26px sans-serif`;
+      ctx.fillStyle = 'rgba(255,255,255,0.48)';
+      const nLines = _cvWrapText(ctx, s.notiz.trim(), W - PAD * 2);
+      y += 4;
+      nLines.slice(0, 2).forEach(ln => { ctx.fillText(ln, PAD, y); y += 34; });
+    }
+
+    // Links / Video
+    const linkItems = [];
+    (s.links || []).forEach(l => linkItems.push({ icon: '🔗', text: l }));
+    if (s.videoId) linkItems.push({ icon: '▶', text: s.videoTitel || 'YouTube' });
+    if (linkItems.length) {
+      y += 12;
+      ctx.font = `22px sans-serif`;
+      ctx.fillStyle = `rgba(${rC},${gC},${bC},0.9)`;
+      linkItems.slice(0, 4).forEach(item => {
+        if (y >= H - 80) return;
+        let txt = item.icon + ' ' + item.text;
+        while (ctx.measureText(txt).width > W - PAD * 2 && txt.length > 10) txt = txt.slice(0, -1);
+        if (txt.length < (item.icon + ' ' + item.text).length) txt += '…';
+        ctx.fillText(txt, PAD, y);
+        y += 30;
+      });
+    }
+  }
+
+  // ── MemoFix Branding (beide Varianten) ──────────────────
+  const BRAND_Y = H - 52;
+  const brandGrad = ctx.createLinearGradient(0, BRAND_Y - 12, 0, H);
+  brandGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  brandGrad.addColorStop(0.3, 'rgba(0,0,0,0.55)');
+  brandGrad.addColorStop(1, 'rgba(0,0,0,0.70)');
+  ctx.fillStyle = brandGrad;
+  ctx.fillRect(0, BRAND_Y - 12, W, H - BRAND_Y + 12);
+
+  // Punkt
+  ctx.beginPath();
+  ctx.arc(PAD + 10, BRAND_Y + 18, 9, 0, Math.PI * 2);
+  ctx.fillStyle = akzent;
+  ctx.fill();
+
+  ctx.font = `bold 21px sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillText('MemoFix', PAD + 26, BRAND_Y + 18);
+
+  ctx.font = `17px sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.42)';
+  ctx.textAlign = 'right';
+  ctx.fillText('teltenkoetter.github.io/MemoFix', W - PAD, BRAND_Y + 18);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+
+  return new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.92));
+}
+
+// ── Karte teilen ─────────────────────────────────────────
 async function teileKarte(s) {
   const MEMOFIX_URL = 'https://teltenkoetter.github.io/MemoFix/';
-  const zeilen = [];
 
-  // Name / Begriff
-  zeilen.push(`📌 ${s.name}`);
-
-  // Vorderseite (Text-Karten)
-  if (s.modus === 'text' && s.vorderseite) {
-    zeilen.push('');
-    zeilen.push(s.vorderseite.trim());
-  }
-
-  // Notiz
-  if (s.notiz) {
-    zeilen.push('');
-    zeilen.push(`📝 ${s.notiz.trim()}`);
-  }
-
-  // Links
-  if (s.links?.length) {
-    zeilen.push('');
-    s.links.forEach(l => zeilen.push(`🔗 ${l}`));
-  }
-
-  // Video
+  // Extra-Text: Links + Video (als Begleittext oder Fallback)
+  const zeilen = [`📌 ${s.name}`];
+  if (s.modus === 'text' && s.vorderseite) { zeilen.push(''); zeilen.push(s.vorderseite.trim()); }
+  if (s.notiz)       { zeilen.push(''); zeilen.push(`📝 ${s.notiz.trim()}`); }
+  if (s.links?.length) { zeilen.push(''); s.links.forEach(l => zeilen.push(`🔗 ${l}`)); }
   if (s.videoId) {
-    const ytUrl = `https://www.youtube.com/watch?v=${s.videoId}`;
-    const label = s.videoTitel ? `▶ ${s.videoTitel}` : '▶ YouTube';
     zeilen.push('');
-    zeilen.push(`${label}\n${ytUrl}`);
+    const ytUrl = `https://www.youtube.com/watch?v=${s.videoId}`;
+    zeilen.push(`${s.videoTitel ? `▶ ${s.videoTitel}` : '▶ YouTube'}\n${ytUrl}`);
   }
-
-  // MemoFix-Signatur
-  zeilen.push('');
-  zeilen.push(`— Geteilt mit MemoFix\n${MEMOFIX_URL}`);
-
+  zeilen.push(''); zeilen.push(`— Geteilt mit MemoFix\n${MEMOFIX_URL}`);
   const shareText = zeilen.join('\n');
 
-  // Foto-Karte: Bild als Datei mitteilen
-  if (s.modus !== 'text' && s.foto) {
-    try {
-      const dbRec = await dbGet('studenten', s.id);
-      const blob  = dbRec?.foto || s.foto;
-      const file  = new File([blob], `${s.name}.jpg`, { type: blob.type || 'image/jpeg' });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: s.name, text: shareText, files: [file] });
-        return;
-      }
-    } catch (err) { /* Fallback auf Text-only */ }
-  }
-
-  // Text-Karte oder Fallback
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: s.name, text: shareText });
+  // Canvas-Karte als Bild teilen
+  try {
+    const blob = await erstelleKartenBild(s);
+    const file = new File([blob], `${s.name}-MemoFix.jpg`, { type: 'image/jpeg' });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ title: s.name, files: [file] });
       return;
-    } catch (err) { if (err.name === 'AbortError') return; }
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    // Canvas fehlgeschlagen → Text-Fallback
   }
 
-  // Letzter Fallback: in Zwischenablage
+  // Text-only Share
+  if (navigator.share) {
+    try { await navigator.share({ title: s.name, text: shareText }); return; }
+    catch (err) { if (err.name === 'AbortError') return; }
+  }
+
+  // Letzter Fallback: Zwischenablage
   try {
     await navigator.clipboard.writeText(shareText);
     toast('Inhalt kopiert ✓');
